@@ -25,3 +25,8 @@ class MatchRepository(ABC):
     def top_for_profile(
         self, profile_id: str, limit: int = 20
     ) -> list[tuple[Match, Job]]: ...
+
+    @abstractmethod
+    def get_for_pair(
+        self, profile_id: str, job_id: str
+    ) -> tuple[Match, Job] | None: ...

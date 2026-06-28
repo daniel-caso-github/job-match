@@ -60,3 +60,17 @@ class SqlAlchemyMatchRepository(MatchRepository):
             (mappers.match_model_to_domain(m), mappers.job_model_to_domain(j))
             for m, j in rows
         ]
+
+    def get_for_pair(
+        self, profile_id: str, job_id: str
+    ) -> tuple[Match, Job] | None:
+        stmt = (
+            select(MatchModel, JobModel)
+            .join(JobModel, MatchModel.job_id == JobModel.id)
+            .where(MatchModel.profile_id == profile_id, MatchModel.job_id == job_id)
+        )
+        row = self._session.execute(stmt).first()
+        if row is None:
+            return None
+        m, j = row
+        return mappers.match_model_to_domain(m), mappers.job_model_to_domain(j)

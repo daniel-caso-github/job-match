@@ -148,6 +148,11 @@ class _InMemoryMatchRepo(MatchRepository):
     ) -> list[tuple[Match, Job]]:
         return []
 
+    def get_for_pair(
+        self, profile_id: str, job_id: str
+    ) -> tuple[Match, Job] | None:
+        return None
+
 
 def _requirements() -> JobRequirements:
     return JobRequirements(stack=["python"], seniority=Seniority.senior)
