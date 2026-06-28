@@ -1,6 +1,31 @@
-# Fase 1-2 (recolección + extracción) + pre-bootstrap fase 3/4/5
-# (Postgres+pgvector + FastAPI).
-# Fase 5 sumará: airflow-webserver, airflow-scheduler, airflow-db.
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile.airflow
+  image: job-match-airflow:dev
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db:5432/airflow
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-change-me}
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    PYTHONPATH: /opt/airflow/repo
+    DATABASE_URL: postgresql+psycopg://app:app@app-db:5432/jobmatch
+    GEMINI_API_KEY: ${GEMINI_API_KEY}
+    SEMANTIC_THRESHOLD: ${SEMANTIC_THRESHOLD:-0.65}
+    TOP_K_FOR_LLM: ${TOP_K_FOR_LLM:-30}
+  volumes:
+    - ./dags:/opt/airflow/dags:ro
+    - ./src:/opt/airflow/repo/src:ro
+  depends_on:
+    app-db:
+      condition: service_healthy
+    airflow-db:
+      condition: service_healthy
+
 services:
   app-db:
     image: pgvector/pgvector:pg16
@@ -65,5 +90,45 @@ services:
       - "8000"
       - --reload
 
+  airflow-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      retries: 10
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create -u admin -p admin -r Admin -e admin@local -f a -l a || true
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: airflow webserver
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: airflow scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
 volumes:
   app-db-data:
+  airflow-db-data:
