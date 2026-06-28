@@ -1,0 +1,13 @@
+# Fase 1: solo el servicio `app` para correr CLIs y tests en contenedor.
+# Fases siguientes (3, 5) sumarán: app-db (pgvector), airflow-*, api.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: job-match-pipeline:dev
+    volumes:
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+    working_dir: /app
+    command: pytest -v

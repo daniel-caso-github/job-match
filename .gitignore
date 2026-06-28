@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# uv
+# uv.lock is committed; build artefacts are not
+dist/
+build/
+*.egg-info/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.local
+*.secret
+
+# Claude Code: skills + CLAUDE.md se versionan; settings.local.json es por dev
+.claude/settings.local.json
+
+# Data
+*.sqlite3
+data/
