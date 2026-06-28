@@ -17,6 +17,9 @@ class Settings:
     gemini_api_key: str | None
     gemini_model: str
     gemini_max_input_chars: int
+    embedding_model: str
+    semantic_threshold: float
+    top_k_for_llm: int
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -27,6 +30,9 @@ class Settings:
             gemini_api_key=os.environ.get("GEMINI_API_KEY"),
             gemini_model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
             gemini_max_input_chars=int(os.environ.get("GEMINI_MAX_INPUT_CHARS", "12000")),
+            embedding_model=os.environ.get("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"),
+            semantic_threshold=float(os.environ.get("SEMANTIC_THRESHOLD", "0.65")),
+            top_k_for_llm=int(os.environ.get("TOP_K_FOR_LLM", "30")),
         )
 
 

@@ -17,6 +17,10 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-install-project
 
+# Pre-download the sentence-transformers model (BAAI/bge-small-en-v1.5, ~133 MB)
+# so the first `embed` run doesn't hit the network and tests stay offline.
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
+
 COPY src ./src
 COPY tests ./tests
 

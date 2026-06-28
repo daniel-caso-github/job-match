@@ -42,6 +42,16 @@ class _InMemoryJobRepo(JobRepository):
     def update_embedding(self, job_id: str, vec: list[float]) -> None:
         pass
 
+    def semantic_top_k(
+        self,
+        embedding: list[float],
+        *,
+        k: int,
+        threshold: float,
+        exclude_scored_for: str | None = None,
+    ) -> list[tuple[str, float]]:
+        return []
+
 
 def _raw_job(source: str, url: str, title: str = "x") -> RawJob:
     return RawJob(

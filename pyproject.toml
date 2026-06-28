@@ -19,6 +19,9 @@ dependencies = [
     "alembic>=1.13",
     "fastapi>=0.110",
     "uvicorn[standard]>=0.27",
+    "sentence-transformers>=2.7",
+    "numpy>=1.26",
+    "torch>=2.0",
 ]
 
 [dependency-groups]
@@ -30,6 +33,17 @@ dev = [
 
 [tool.uv]
 package = false
+
+# Force the CPU build of PyTorch (sentence-transformers' main dep). The default
+# wheels bundle CUDA libs which add ~5 GB to the image and are useless for
+# inference on bge-small-en-v1.5 (we run on CPU).
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -9,7 +9,7 @@ from src.domain.entities.raw_job import RawJob
 from src.domain.ports.job_repository import JobRepository
 from src.domain.value_objects.job_requirements import JobRequirements
 from src.infrastructure.persistence import mappers
-from src.infrastructure.persistence.orm_models import JobModel
+from src.infrastructure.persistence.orm_models import JobModel, MatchModel
 
 
 class SqlAlchemyJobRepository(JobRepository):
@@ -69,3 +69,32 @@ class SqlAlchemyJobRepository(JobRepository):
         if model is None:
             raise LookupError(f"Job {job_id} not found")
         model.embedding = vec
+
+    def semantic_top_k(
+        self,
+        embedding: list[float],
+        *,
+        k: int,
+        threshold: float,
+        exclude_scored_for: str | None = None,
+    ) -> list[tuple[str, float]]:
+        distance = JobModel.embedding.cosine_distance(embedding)
+        stmt = (
+            select(JobModel.id, (1 - distance).label("semantic_score"))
+            .where(JobModel.embedding.is_not(None))
+            .where(JobModel.requirements.is_not(None))
+            .order_by(distance)
+            .limit(k)
+        )
+        if exclude_scored_for is not None:
+            already_scored = select(MatchModel.job_id).where(
+                MatchModel.profile_id == exclude_scored_for
+            )
+            stmt = stmt.where(JobModel.id.not_in(already_scored))
+
+        rows = self._session.execute(stmt).all()
+        return [
+            (row.id, float(row.semantic_score))
+            for row in rows
+            if row.semantic_score is not None and row.semantic_score >= threshold
+        ]

@@ -1,0 +1,16 @@
+{
+  "id": "daniel-smoke",
+  "stack": [
+    {"name": "Python", "years": 8},
+    {"name": "FastAPI", "years": 3},
+    {"name": "PostgreSQL", "years": 6},
+    {"name": "Docker", "years": 4}
+  ],
+  "seniority": "senior",
+  "english_level": "B2",
+  "location": "AR",
+  "willing_to_relocate": false,
+  "modality": "remote",
+  "salary_expectation": "$80k-$110k USD",
+  "summary": "Backend engineer with 8 years building Python APIs, integrations and data pipelines. Strong with FastAPI, PostgreSQL, Docker and Airflow. Looking for remote LATAM-friendly senior roles."
+}

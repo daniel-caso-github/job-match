@@ -55,6 +55,16 @@ class _FakeJobRepo(JobRepository):
     def update_embedding(self, job_id: str, vec: list[float]) -> None:
         pass
 
+    def semantic_top_k(
+        self,
+        embedding: list[float],
+        *,
+        k: int,
+        threshold: float,
+        exclude_scored_for: str | None = None,
+    ) -> list[tuple[str, float]]:
+        return []
+
 
 def test_extracts_for_every_pending_job_and_updates_repo():
     pending = [_job("a"), _job("b"), _job("c")]
