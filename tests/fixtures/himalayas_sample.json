@@ -1,0 +1,27 @@
+{
+  "jobs": [
+    {
+      "title": "Senior Backend Engineer (Python)",
+      "companyName": "Acme",
+      "applicationLink": "https://himalayas.app/jobs/acme-senior-backend",
+      "description": "<p>We are looking for a <strong>senior backend engineer</strong>.</p><ul><li>Python</li><li>FastAPI</li><li>Postgres</li></ul><p>Remote LATAM-friendly. English C1 required.</p>",
+      "publishedAt": "2026-06-25T10:00:00Z",
+      "locationRestrictions": ["AR"],
+      "seniority": "senior"
+    },
+    {
+      "title": "Backend Developer",
+      "applicationLink": "https://himalayas.app/jobs/no-company-backend",
+      "description": "Build backend services with Python and Django. Remote.",
+      "publishedAt": "2026-06-26T08:30:00Z"
+    },
+    {
+      "title": "Platform Engineer",
+      "companyName": "Beta Corp",
+      "applicationLink": "https://himalayas.app/jobs/beta-platform",
+      "description": "<div>Kubernetes, Terraform, Go. <em>EU residency required.</em></div>",
+      "publishedAt": "not-a-date",
+      "locationRestrictions": ["DE", "ES"]
+    }
+  ]
+}

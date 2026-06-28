@@ -1,0 +1,46 @@
+{
+  "0-legal-notice": "Legal warning - test fixture, not real data.",
+  "job-count": 3,
+  "total-job-count": 3,
+  "jobs": [
+    {
+      "id": 1001,
+      "url": "https://remotive.com/remote-jobs/backend/acme-senior-backend-1001",
+      "title": "Senior Backend Engineer (Python)",
+      "company_name": "Acme",
+      "category": "Software Development",
+      "tags": ["python", "fastapi", "postgres"],
+      "job_type": "full_time",
+      "publication_date": "2026-06-27T14:00:00",
+      "candidate_required_location": "Worldwide",
+      "salary": "$90k - $130k",
+      "description": "<p>We are looking for a <strong>senior backend engineer</strong> with Python and FastAPI experience.</p><ul><li>Postgres</li><li>Remote LATAM-friendly</li></ul>"
+    },
+    {
+      "id": 1002,
+      "url": "https://remotive.com/remote-jobs/backend/no-company-1002",
+      "title": "Backend Developer",
+      "company_name": null,
+      "category": "Software Development",
+      "tags": ["go"],
+      "job_type": "contract",
+      "publication_date": "2026-06-26T09:30:00",
+      "candidate_required_location": "USA Only",
+      "salary": "",
+      "description": "Backend role described in plain text. No HTML."
+    },
+    {
+      "id": 1003,
+      "url": "https://remotive.com/remote-jobs/devops/beta-platform-1003",
+      "title": "Platform Engineer",
+      "company_name": "Beta Corp",
+      "category": "Devops",
+      "tags": ["kubernetes", "terraform"],
+      "job_type": "full_time",
+      "publication_date": "not-a-valid-date",
+      "candidate_required_location": "EMEA",
+      "salary": null,
+      "description": "<div>Kubernetes & Terraform role.</div>"
+    }
+  ]
+}
