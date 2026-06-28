@@ -102,41 +102,53 @@ Schemas Pydantic relacionados (no son ORM, son validación de datos): `phase-2-e
 
 ---
 
-## 5. Estructura del repositorio
+## 5. Estructura del repositorio (Clean Architecture)
+
+> **Nota de corrección (post-implementación):** el doc original proponía una estructura plana por módulo funcional. **Adoptamos Clean Architecture clásica** (decisión del usuario). Cuatro capas, dependencias hacia adentro: `interfaces → infrastructure → application → domain`. Domain no importa de nadie externo (salvo Pydantic).
 
 ```
 job_match_pipeline/
-├── dags/
-│   └── job_match.py              # DAG cada 12h (Airflow)
+├── dags/                         # DAG Airflow (fase 5)
+│   └── job_match.py
 ├── src/
-│   ├── sources/
-│   │   ├── base.py               # Source (ABC) + RawJob (Pydantic)
-│   │   ├── himalayas.py          # cliente API JSON
-│   │   └── remotive.py           # parser RSS
-│   ├── extraction/
-│   │   ├── schema.py             # JobRequirements (Pydantic)
-│   │   └── extractor.py          # Gemini → JSON validado
-│   ├── matching/
-│   │   ├── embedder.py           # bge-small-en-v1.5
-│   │   ├── semantic.py           # similitud coseno (pgvector)
-│   │   └── llm_scorer.py         # Gemini: Verdict (fit + riesgos)
-│   ├── storage/
-│   │   ├── database.py           # engine + SessionLocal + session_scope
-│   │   ├── models.py             # SQLAlchemy 2.0: Job / Profile / Match
-│   │   └── pgvector_io.py        # upsert idempotente + queries ORM (fase 3)
-│   ├── profile/
-│   │   └── form.py               # ProfileForm + validación
-│   └── api/
-│       └── main.py               # FastAPI + Swagger
+│   ├── domain/                   # pura — sin frameworks
+│   │   ├── entities/             # RawJob, Job, Profile, Match (Pydantic)
+│   │   ├── value_objects/        # JobRequirements + enums, Verdict, ProfileForm
+│   │   ├── services/             # make_id (función pura)
+│   │   └── ports/                # ABCs: JobSource, JobRepository, ProfileRepository,
+│   │                             # MatchRepository, RequirementsExtractor, Embedder*, LlmScorer*
+│   ├── application/
+│   │   └── use_cases/            # CollectJobsUseCase, ExtractJobRequirementsUseCase,
+│   │                             # EmbedJobsUseCase* (fase 3), ScoreProfileUseCase* (fase 3)
+│   ├── infrastructure/           # implementa los ports
+│   │   ├── config.py             # Settings (env)
+│   │   ├── sources/              # HimalayasSource, RemotiveSource (httpx)
+│   │   ├── llm/                  # GeminiExtractor, GeminiScorer* (fase 3)
+│   │   ├── embedding/*           # SentenceTransformersEmbedder (fase 3)
+│   │   └── persistence/          # orm_models.py + mappers.py + SqlAlchemy*Repository
+│   └── interfaces/               # entrypoints
+│       ├── api/                  # FastAPI: main.py + dependencies.py + routers/
+│       └── cli/                  # collect.py, extract.py, ...
 ├── tests/
-├── docs/                         # este directorio
-├── docker-compose.yml            # Postgres+pgvector, Airflow (fase 5)
-├── alembic.ini                   # Alembic config (sqlalchemy.url se inyecta desde env)
+│   ├── domain/                   # entities, value_objects (puros, sin mocks)
+│   ├── application/              # use cases con ports mockeados (in-memory fakes)
+│   ├── infrastructure/           # sources, llm, persistence (mocks de I/O)
+│   └── interfaces/               # API tests con httpx.AsyncClient
+├── alembic.ini                   # Alembic config (sqlalchemy.url se inyecta desde env.py)
 ├── alembic/                      # migraciones (env.py + versions/)
+├── docker-compose.yml            # app-db (pgvector), app (tests/CLIs), api (uvicorn)
 ├── pyproject.toml + uv.lock      # uv-managed deps
 ├── .env.example                  # GEMINI_API_KEY, DATABASE_URL, ...
 └── README.md
 ```
+
+*: marcado con `*` = componente declarado pero aún no implementado (espera su fase).
+
+**Regla de dependencias** (verificada manualmente; en el futuro automatizable con `import-linter`):
+- `domain/` solo importa de sí mismo + Pydantic.
+- `application/` importa solo de `domain/`.
+- `infrastructure/` importa de `domain/` + libs externas (httpx, sqlalchemy, google-genai, ...).
+- `interfaces/` importa de todo lo anterior — es el único lugar donde se *cablea* (DI).
 
 ---
 
@@ -145,7 +157,7 @@ job_match_pipeline/
 | Capa | Tecnología | Para qué |
 |---|---|---|
 | Orquestación | Airflow 2.x | DAG cada 12h, retries, idempotencia |
-| API | FastAPI + Uvicorn | endpoints + Swagger auto |
+| API | FastAPI + Uvicorn (ya bootstrappeada: `GET /health` + DI con `Depends`) | endpoints + Swagger auto |
 | Validación | Pydantic v2 | esquemas (`RawJob`, `JobRequirements`, `Verdict`, `ProfileForm`) |
 | LLM | Gemini (`google-genai`) | extracción estructurada + scoring |
 | Embeddings | `sentence-transformers` + `BAAI/bge-small-en-v1.5` | vectores de 384 dims, CPU |

@@ -3,8 +3,8 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from src.storage.database import get_database_url
-from src.storage.models import Base
+from src.infrastructure.config import settings
+from src.infrastructure.persistence.orm_models import Base
 
 # Importing pgvector.sqlalchemy registers the Vector type with SQLAlchemy so
 # migrations can serialize Mapped[Vector(...)] columns correctly.
@@ -14,7 +14,7 @@ config = context.config
 
 # Inject the DB URL from the environment instead of alembic.ini, keeping
 # secrets and per-env config out of the repo.
-config.set_main_option("sqlalchemy.url", get_database_url())
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

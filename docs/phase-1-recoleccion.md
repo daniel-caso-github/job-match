@@ -3,6 +3,14 @@
 **Tiempo estimado:** 1 día
 **Entregable demostrable:** un script de CLI que trae N ofertas reales de Himalayas y de Remotive, las normaliza al esquema `RawJob` e imprime el JSON resultante. Listo para grabar en video.
 
+> **Nota de corrección (post-implementación):** el doc planeaba `src/sources/{base,himalayas,remotive}.py` con CLIs por módulo. Tras la refactor a Clean Architecture, los paths cambiaron:
+> - `RawJob`, `Source` (ABC), `make_id` → `src/domain/entities/raw_job.py`, `src/domain/ports/job_source.py::JobSource`, `src/domain/services/id_hasher.py`.
+> - `HimalayasSource`, `RemotiveSource` → `src/infrastructure/sources/{himalayas,remotive}.py` (heredan de `JobSource`, sin CLI propia).
+> - CLI unificada → `src/interfaces/cli/collect.py` (`python -m src.interfaces.cli.collect --source <name>`).
+> - Use case `CollectJobsUseCase` (`src/application/use_cases/collect_jobs.py`) orquesta `JobSource` → `JobRepository`.
+>
+> Lo que sigue en este doc usa los nombres viejos por claridad histórica; al implementar/leer el código real, mapear según el cuadro de arriba.
+
 ---
 
 ## 1. Objetivo

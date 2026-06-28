@@ -3,6 +3,15 @@
 **Tiempo estimado:** 1 día
 **Entregable demostrable:** Swagger en `http://localhost:8000/docs` con los 5 endpoints funcionando contra la BD poblada por la fase 3. Demo: `POST /profile` con un perfil real → `GET /matches` → abrir el top 1 y leer su verdict.
 
+> **Nota de corrección (post-implementación parcial):** el bootstrap de FastAPI ya está hecho (`src/interfaces/api/main.py` + `dependencies.py` + `routers/health.py`). Lo que falta de fase 4 es **solo los routers de negocio**:
+> - `src/interfaces/api/routers/profile.py` — `POST /profile`, valida con `ProfileForm` (`src/domain/value_objects/profile_form.py`), usa `ProfileRepositoryDep` + (a fase 3) `EmbedProfileUseCase`.
+> - `src/interfaces/api/routers/matches.py` — `GET /matches`, `GET /matches/{job_id}`, usa `MatchRepositoryDep`.
+> - `src/interfaces/api/routers/jobs.py` — `POST /jobs/refresh`, encadena `CollectJobsUseCase` + `ExtractJobRequirementsUseCase` + (fase 3) `EmbedJobsUseCase` + `ScoreProfileUseCase` en background.
+> - Cada router se registra con `app.include_router(...)` en `main.py`.
+> - DI: usar los `Annotated[..., Depends(...)]` aliases ya creados en `dependencies.py` (`SessionDep`, `JobRepositoryDep`, etc.); agregar `ProfileFormDep` para validar bodies.
+>
+> El código que sigue en este doc usa el patrón viejo (función `get_engine()`, `text()` en handlers). Al implementar, **traducir a use cases + ports** según el bootstrap actual.
+
 ---
 
 ## 1. Objetivo

@@ -6,7 +6,9 @@
 > **Notas de corrección (post-implementación)**:
 > - **SDK**: el doc planeaba `google-generativeai` (legacy). Implementado con `google-genai>=1.0` (nuevo SDK oficial), que acepta `response_schema=JobRequirements` directamente y devuelve la instancia parseada en `response.parsed` — código más simple, una sola línea de validación.
 > - **Modelo**: el doc decía `gemini-1.5-flash`. Usamos **`gemini-2.5-flash`** (la generación 2.0 ya fue retirada del catálogo público en producción, con error `404 NOT_FOUND` al invocarla; 2.5-flash es la flash estable actual y mantiene el tier gratuito).
-> - **CLI integrada**: se agregó `python -m src.extraction.extractor --source <himalayas|remotive> --limit N` que encadena fase 1 + fase 2 end-to-end (no estaba en el plan original; útil para smoke y demo).
+> - **CLI**: la CLI vive en `src/interfaces/cli/extract.py` (no `src/extraction/extractor.py::_cli`). Workflow real: `/run-source` recolecta a BD → `/extract` procesa las pendientes.
+> - **Arquitectura (Clean Arch)**: la función `extract_requirements` se reemplazó por la clase `GeminiExtractor(RequirementsExtractor)` en `src/infrastructure/llm/gemini_extractor.py`. El port `RequirementsExtractor` (ABC) vive en `src/domain/ports/`. El use case `ExtractJobRequirementsUseCase` (`src/application/use_cases/`) consume el port + `JobRepository`.
+> - **JobRequirements** ahora está en `src/domain/value_objects/job_requirements.py` (no en `src/extraction/schema.py`).
 
 ---
 

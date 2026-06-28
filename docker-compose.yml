@@ -1,5 +1,6 @@
-# Fase 1-2 (recolección + extracción) + pre-bootstrap fase 3/5 (Postgres+pgvector).
-# Fase 5 sumará: airflow-webserver, airflow-scheduler, airflow-db, api.
+# Fase 1-2 (recolección + extracción) + pre-bootstrap fase 3/4/5
+# (Postgres+pgvector + FastAPI).
+# Fase 5 sumará: airflow-webserver, airflow-scheduler, airflow-db.
 services:
   app-db:
     image: pgvector/pgvector:pg16
@@ -16,6 +17,7 @@ services:
       interval: 5s
       retries: 10
 
+  # Servicio multi-uso para tests, CLIs y alembic.
   app:
     build:
       context: .
@@ -37,6 +39,31 @@ services:
       app-db:
         condition: service_healthy
     command: pytest -v
+
+  # FastAPI con uvicorn --reload. Comparte imagen y env con `app`.
+  api:
+    image: job-match-pipeline:dev
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://app:app@app-db:5432/jobmatch
+    volumes:
+      - ./src:/app/src:ro
+    working_dir: /app
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      app-db:
+        condition: service_healthy
+    command:
+      - uvicorn
+      - src.interfaces.api.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
 
 volumes:
   app-db-data:

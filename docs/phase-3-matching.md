@@ -3,6 +3,18 @@
 **Tiempo estimado:** 1 día
 **Entregable demostrable:** dado un perfil + un set de ofertas en la BD, devuelve el top K matches ordenado por `llm_score` con `verdict.strengths` y `verdict.risks` explicados. Esta es la fase que justifica el proyecto: la IA toma decisiones útiles.
 
+> **Nota de corrección (post-implementación de fase 2 + Clean Arch):** los paths cambiaron y el patrón se reorganiza:
+> - **Ports** a crear en domain: `Embedder` (ABC), `LlmScorer` (ABC). El `MatchRepository` (port) ya está en `src/domain/ports/match_repository.py`.
+> - **Implementaciones** en infrastructure:
+>   - `src/infrastructure/embedding/sentence_transformers_embedder.py::SentenceTransformersEmbedder(Embedder)`.
+>   - `src/infrastructure/llm/gemini_scorer.py::GeminiScorer(LlmScorer)`.
+> - **Storage** ya existe: `SqlAlchemyJobRepository`, `SqlAlchemyMatchRepository` en `src/infrastructure/persistence/`. Lo que en este doc llaman `pgvector_io.py` se reparte entre esos repos + funciones de query semántica (las queries de pgvector con `cosine_distance` van en el repo o en un helper si conviene).
+> - **Use cases** a crear en application:
+>   - `EmbedJobsUseCase(embedder, job_repo)` — lo que el doc llama `embed_pending_jobs`.
+>   - `ScoreProfileUseCase(embedder, semantic_search, llm_scorer, match_repo, job_repo, profile_repo)` — lo que el doc llama `score_profile_against_corpus`. (la `semantic_search` puede vivir como método del `JobRepository`).
+> - **`Verdict`** (value object) ya declarado en `src/domain/value_objects/verdict.py` (a implementar aquí).
+> - El código de §3, §5 y §6 a continuación usa firmas viejas; al implementar, traducir a esta arquitectura.
+
 ---
 
 ## 1. Objetivo

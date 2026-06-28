@@ -3,6 +3,13 @@
 **Tiempo estimado:** 1 día
 **Entregable demostrable:** `docker compose up` levanta Postgres+pgvector, Airflow y la API. El DAG `job_match` corre end-to-end cada 12h (y a demanda), poblando la BD con matches reales.
 
+> **Nota de corrección (post-implementación parcial):** lo que ya está hecho como pre-bootstrap:
+> - `app-db` (`pgvector/pgvector:pg16`) en `docker-compose.yml` con healthcheck + volumen + `127.0.0.1:5432`.
+> - `api` (uvicorn, `127.0.0.1:8000`) en `docker-compose.yml`.
+> - Alembic con `initial_schema` aplicada (`CREATE EXTENSION vector` + tablas + HNSW). No hay `init.sql`.
+>
+> Lo que falta de fase 5: **Airflow webserver + scheduler + airflow-db**, el DAG `job_match`, y sus tasks. El DAG debe invocar los **use cases existentes** (`CollectJobsUseCase`, `ExtractJobRequirementsUseCase`, y los de fase 3 `EmbedJobsUseCase`/`ScoreProfileUseCase`), cableando dependencias concretas dentro de cada task con `session_scope()`. NO duplicar lógica desde código viejo (`text()`, queries crudas); todo via los repos y ports ya definidos.
+
 ---
 
 ## 1. Objetivo

@@ -6,7 +6,46 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Job Match Pipeline** — sistema que recolecta ofertas de empleo de fuentes legales cada 12 h, extrae sus requisitos con un LLM (Gemini) a un schema Pydantic validado, calcula embeddings, hace scoring semántico + LLM contra un perfil profesional, y expone los matches con fortalezas/riesgos vía FastAPI.
 
-Estado actual: **Fases 1 (recolección) y 2 (extracción Gemini)** implementadas. **Pre-bootstrap de fase 3/5**: capa de persistencia lista (SQLAlchemy 2.0 ORM + Alembic + `app-db` corriendo en docker-compose con `pgvector/pgvector:pg16`). Las fases 3–6 están diseñadas en `docs/` pero aún no implementadas — la planificación es la fuente de verdad, leer el doc de la fase antes de implementarla.
+Estado actual:
+- ✅ **Fase 1** (recolección — Himalayas + Remotive) implementada.
+- ✅ **Fase 2** (extracción Gemini) implementada.
+- ✅ **Storage layer** (SQLAlchemy 2.0 ORM + Alembic + Postgres+pgvector) en pre-bootstrap.
+- ✅ **FastAPI** en pre-bootstrap (servicio `api` corre, `GET /health`, DI vía `Depends`).
+- ⏳ Fases 3–6 (matching, profile/match routers, Airflow, README/demo) pendientes.
+
+La planificación detallada de cada fase vive en `docs/` — leer el doc de la fase antes de implementarla.
+
+## Arquitectura: Clean Architecture
+
+Cuatro capas estrictas. **La dirección de las dependencias va siempre hacia adentro** (interfaces → infrastructure → application → domain). Domain no importa de nadie.
+
+```
+src/
+├── domain/                        # pura — sin frameworks externos
+│   ├── entities/                  # RawJob, Job, Profile, Match
+│   ├── value_objects/             # JobRequirements + Seniority + EnglishLevel
+│   ├── services/                  # make_id (función pura)
+│   └── ports/                     # ABC: JobSource, JobRepository, ProfileRepository,
+│                                  # MatchRepository, RequirementsExtractor
+├── application/
+│   └── use_cases/                 # CollectJobsUseCase, ExtractJobRequirementsUseCase
+├── infrastructure/                # implementa los ports del domain
+│   ├── config.py                  # Settings (lee env)
+│   ├── sources/                   # HimalayasSource, RemotiveSource (httpx)
+│   ├── llm/                       # GeminiExtractor (google-genai)
+│   └── persistence/               # SQLAlchemy: ORM models + repos + mappers
+└── interfaces/                    # entrypoints
+    ├── api/                       # FastAPI: main.py + dependencies.py + routers/
+    └── cli/                       # collect.py, extract.py (entrypoints argparse)
+```
+
+**Reglas de oro:**
+- `domain/` **NO** importa nada de `infrastructure/`, `application/`, `interfaces/`, ni librerías externas pesadas (excepto Pydantic, que es validación, no framework).
+- `application/use_cases/*` reciben dependencias por constructor (DIP). Solo conocen los **ports** (`domain/ports/`), no las implementaciones concretas.
+- `infrastructure/persistence/sqlalchemy_*_repository.py` traducen entre entidades de dominio (Pydantic) y `orm_models` (SQLAlchemy) via `mappers.py`. **Cero `text()` / SQL en duro** en código de aplicación.
+- `interfaces/api/dependencies.py` cablea ports → implementaciones concretas via `Depends()`. Es el único lugar donde se sabe que un `JobRepository` es realmente un `SqlAlchemyJobRepository`.
+
+Para añadir una fuente nueva: heredar de `JobSource` (port en domain), implementar en `infrastructure/sources/`, registrar en `src/interfaces/cli/collect.py::SOURCE_REGISTRY`. Use case no cambia.
 
 ## Workflow: Docker-only
 
@@ -14,18 +53,22 @@ Todo Python corre dentro del contenedor. **No hay `.venv` local** ni se debe cre
 
 ```bash
 docker compose build                                                   # tras cambios en deps/Dockerfile
-docker compose run --rm app pytest -v                                  # tests
+docker compose up -d app-db                                            # arrancar Postgres+pgvector
+docker compose up -d api                                               # arrancar FastAPI (puerto 8000)
+docker compose run --rm app pytest -v                                  # tests (offline-first)
 docker compose run --rm app pytest -v -k <patrón>                      # un test específico
 docker compose run --rm app ruff check src tests                       # lint
-docker compose run --rm app python -m src.sources.himalayas --limit 3  # smoke Himalayas (API real)
-docker compose run --rm app python -m src.sources.remotive --limit 3   # smoke Remotive (API real)
-docker compose run --rm app python -m src.extraction.extractor \       # fase 1 → fase 2 end-to-end
-  --source himalayas --limit 3                                          # requiere .env con GEMINI_API_KEY
-
-docker compose up -d app-db                                             # arrancar Postgres+pgvector
-docker compose run --rm app alembic upgrade head                        # aplicar migraciones
-docker compose run --rm app alembic revision --autogenerate -m "msg"    # nueva migración tras editar modelos
-docker compose exec app-db psql -U app -d jobmatch                      # shell SQL ad-hoc
+docker compose run --rm app alembic upgrade head                       # aplicar migraciones
+docker compose run --rm app alembic revision --autogenerate -m "msg"   # nueva migración tras editar modelos
+docker compose run --rm app python -m src.interfaces.cli.collect \     # recolectar a BD
+  --source himalayas --limit 3
+docker compose run --rm app python -m src.interfaces.cli.collect \     # recolectar sin tocar BD (smoke)
+  --source remotive --limit 3 --dry-run
+docker compose run --rm app python -m src.interfaces.cli.extract \     # extraer requirements (Gemini)
+  --limit 5 --print-results                                            # requiere .env con GEMINI_API_KEY
+docker compose exec app-db psql -U app -d jobmatch                     # shell SQL ad-hoc
+curl http://127.0.0.1:8000/health                                      # API health
+open http://127.0.0.1:8000/docs                                        # Swagger
 ```
 
 Hay skills atajo proyecto-locales — ver sección **Skills** más abajo.
@@ -37,65 +80,56 @@ Skills invocables como `/<nombre>`. Preferí usarlas antes de tipear los comando
 | Skill | Cuándo usarla | Qué hace |
 |---|---|---|
 | `/test [-k patrón]` | tests, iterar TDD, validar un cambio | `docker compose run --rm app pytest -v`, con filtro opcional. Reporta fallos sin auto-fix |
-| `/run-source <himalayas\|remotive> [--limit N]` | smoke test contra la API real | corre el CLI de la fuente; default `--limit 3`. Cuenta para el cupo (≤ 4 req/día por fuente) |
-| `/extract <himalayas\|remotive> [--limit N]` | ver requisitos extraídos por Gemini | encadena fase 1 + fase 2: trae N ofertas y las pasa por el extractor. Requiere `.env` con `GEMINI_API_KEY` |
-| `/add-source <name>` | añadir una nueva fuente (We Work Remotely, Jobicy, …) | workflow guiado: lee `base.py` + docs, crea `src/sources/<name>.py` + fixture + tests. **No toca fuentes existentes** |
-| `/review` | antes de un commit o al cerrar una feature | code review del diff actual contra las convenciones del proyecto (Pydantic v2, idempotencia, retries, fixtures offline). Solo reporta |
+| `/run-source <himalayas\|remotive\|all> [--limit N] [--dry-run]` | recolectar a BD (o smoke en stdout) | corre `CollectJobsUseCase`; default `all --limit 3`. Cuenta para el cupo (≤ 4 req/día por fuente) |
+| `/extract [--limit N] [--print-results]` | extraer requirements via Gemini | corre `ExtractJobRequirementsUseCase` sobre ofertas con `requirements IS NULL`. Requiere `.env` con `GEMINI_API_KEY` |
+| `/add-source <name>` | añadir una nueva fuente (We Work Remotely, Jobicy, …) | workflow guiado: lee ports + docs, crea `src/infrastructure/sources/<name>.py` + fixture + tests + registra en CLI. **No toca fuentes existentes** |
+| `/migrate` | tras editar `orm_models.py` o cambiar el schema | autogenera la revision Alembic, la revisa (verifica imports pgvector + HNSW), aplica `upgrade head` |
+| `/db-shell` | inspección ad-hoc de la BD | `docker compose exec app-db psql -U app -d jobmatch`. Solo lectura/exploración; cambios estructurales van por Alembic |
+| `/review` | antes de un commit o al cerrar una feature | code review del diff actual contra las convenciones del proyecto. Solo reporta |
 | `/check` | gate pre-commit | corre pytest + ruff combinados; reporta el primer fallo de cada uno |
 | `/build` | tras cambiar `pyproject.toml`, `uv.lock` o `Dockerfile` | `docker compose build app`. **No hace falta** para cambios solo en `src/`/`tests/` (van por volúmenes) |
-| `/migrate` | tras editar `src/storage/models.py` o cambiar el schema | autogenera la revision Alembic y la aplica. Recordar revisar el diff antes de `upgrade head` |
-| `/db-shell` | inspección ad-hoc de la BD | `docker compose exec app-db psql -U app -d jobmatch`. Solo lectura/exploración; cambios estructurales van por Alembic |
 
 Sin agents customizados — los preexistentes (`feature-dev`, `code-reviewer`, `Explore`, `Plan`) ya cubren. Si llegamos a un patrón repetido que los justifique, se agregan en `.claude/agents/`.
 
-## Arquitectura
-
-```
-recolectar (fase 1) → deduplicar → extraer_requisitos (fase 2, Gemini)
-  → embeddings (fase 3) → score_semántico → score_llm → persistir
-```
-
-Tres capas de inteligencia, en orden de costo creciente:
-1. **Semántica** (CPU local, sobre todas las ofertas) — filtro grueso.
-2. **Extracción estructurada** (Gemini, solo las que pasan el filtro).
-3. **Scoring LLM** (Gemini, top K) — devuelve `{score, strengths, risks}`.
-
-Capas implementadas hoy: **1 (recolección) + 2 (extracción)**. El resto está en `docs/phase-N-*.md` con schemas Pydantic, prompts, SQL y pseudocódigo listos para traducir.
-
-### Componentes de fase 1 (`src/sources/`)
-
-- `base.py` — `RawJob` (Pydantic), `Source` (ABC), `make_id(source, url)` (SHA-1 truncado, **único punto** para IDs idempotentes).
-- `himalayas.py` — cliente `httpx` con paginador + retries `tenacity` + `BeautifulSoup` para limpiar HTML + CLI argparse.
-- `remotive.py` — cliente `httpx` contra la API JSON oficial (`/api/remote-jobs`). El RSS fue descontinuado por Remotive; usar siempre la API JSON.
-
-Toda fuente nueva debe heredar de `Source` y devolver `RawJob` con `raw_text` sin HTML. Fixtures de tests **sintéticas mínimas** en `tests/fixtures/` — sin llamadas de red en CI.
-
-### Componentes de fase 2 (`src/extraction/`)
-
-- `schema.py` — `JobRequirements` (Pydantic v2) + `Seniority` y `EnglishLevel` (`StrEnum`). Validator de `stack` (lowercase + dedup).
-- `extractor.py` — `extract_requirements(raw_text) -> JobRequirements`. Usa el SDK nuevo `google-genai` con `response_schema=JobRequirements` para parseo nativo. Reintento con feedback ante `ValidationError`/`JSONDecodeError`. Si todo falla devuelve `JobRequirements(confidence=0.0)` — **nunca levanta** (el pipeline tiene que avanzar). Cliente Gemini lazy via `@lru_cache`. Requiere `GEMINI_API_KEY` (vía `.env`).
-- CLI integrada: `python -m src.extraction.extractor --source himalayas --limit 3` encadena fase 1 + fase 2 end-to-end.
-
-### Componentes de storage (pre-bootstrap fase 3 / 5) (`src/storage/`)
-
-- `models.py` — `Base` (`DeclarativeBase`) + `Job`, `Profile`, `Match` (SQLAlchemy 2.0 con `Mapped[]` y `mapped_column`). Embeddings via `pgvector.sqlalchemy.Vector(384)`. JSONB para `requirements`/`form_data`/`verdict`. Índice HNSW (`vector_cosine_ops`) sobre `jobs.embedding` declarado en `__table_args__`.
-- `database.py` — `engine` + `SessionLocal` + `session_scope()` context manager (commit on success, rollback on error). `DATABASE_URL` se lee de env con default a `postgresql+psycopg://app:app@app-db:5432/jobmatch`.
-- `alembic/` (raíz, no en `src/`) — migraciones versionadas. La inicial crea la extensión `vector`, las 3 tablas y los 4 índices. Para cambios al schema: editar modelos → `alembic revision --autogenerate -m "..."` → revisar diff → `alembic upgrade head`.
-
-**Reglas de persistencia:**
-- **Cero `text()` / SQL en duro** en código de aplicación. Todo via `select()`, `insert()` (con `pg_insert.on_conflict_do_update` para upserts) sobre los modelos.
-- Idempotencia por upsert: `pg_insert(...).on_conflict_do_update(...)` en `src/storage/pgvector_io.py` (fase 3, aún no implementado).
-- Embeddings: asignación directa (`job.embedding = vec.tolist()`); no hay `CAST(... AS vector)` necesario, la columna `Vector(384)` ya tipea.
-- Schema changes pasan **siempre** por Alembic — nunca editar el schema con SQL manual ni `Base.metadata.create_all()`.
-
 ## Convenciones de código
 
-- **Pydantic v2** para todo modelo de datos. No usar dataclasses ni dicts crudos cuando hay un schema.
+- **Pydantic v2** para entidades de dominio y value objects. No usar dataclasses ni dicts crudos cuando hay un schema. Excepción: `Settings` en `infrastructure/config.py` (frozen dataclass — no necesita validación, lee env).
 - **No inventar comentarios/docstrings ni manejo de errores donde no se pide.** Las funciones tienen tipos; el código bien nombrado se explica solo.
-- **Idempotencia**: cualquier operación debe poder reintentarse sin duplicar estado. IDs siempre vía `make_id`; persistencia vía upsert (fase 3+).
-- **Retries `tenacity`** en todo cliente HTTP externo (429, 5xx, timeouts). Patrón en `src/sources/himalayas.py::_get_json`.
-- **Tests offline-first**: fixtures sintéticas en `tests/fixtures/`, todo lo de red mockeado con `unittest.mock.patch`.
+- **Idempotencia**: cualquier operación debe poder reintentarse sin duplicar estado. IDs siempre vía `make_id`; persistencia vía `pg_insert.on_conflict_do_update` en los repos.
+- **Retries `tenacity`** en todo cliente HTTP/LLM externo (429, 5xx, timeouts). Patrón en `src/infrastructure/sources/himalayas.py::_get_json` y `src/infrastructure/llm/gemini_extractor.py::_generate`.
+- **Tests offline-first**: fixtures sintéticas en `tests/fixtures/`, mocks con `unittest.mock.patch`. Un test que requiere BD real va con marker `integration` (no usado todavía).
+- **DIP en use cases**: los use cases reciben **ports** (`JobRepository`, `JobSource`, ...) en el constructor, nunca clases concretas. Tests pueden inyectar in-memory fakes (ver `tests/application/`).
+- **Sin SQL en duro**: toda persistencia via `select()` / `pg_insert()` sobre `orm_models`. Schema changes pasan **siempre** por Alembic.
 - **Idioma**: identificadores en inglés; mensajes de log y respuestas al usuario en español.
+
+## Componentes implementados
+
+### Domain (`src/domain/`)
+- `entities/{raw_job,job,profile,match}.py` — entities Pydantic.
+- `value_objects/job_requirements.py` — `JobRequirements` + `Seniority`/`EnglishLevel` (`StrEnum`). Validator de `stack` (lowercase + dedup).
+- `services/id_hasher.py::make_id` — SHA-1 truncado para idempotencia.
+- `ports/{job_source,job_repository,profile_repository,match_repository,requirements_extractor}.py` — ABCs.
+
+### Application (`src/application/use_cases/`)
+- `collect_jobs.py::CollectJobsUseCase` — itera sources, upsertea via `JobRepository`.
+- `extract_job_requirements.py::ExtractJobRequirementsUseCase` — extrae Gemini, persiste.
+
+### Infrastructure (`src/infrastructure/`)
+- `config.py::Settings` — frozen dataclass leído de env (default `from_env()` se exporta como singleton `settings`).
+- `sources/{himalayas,remotive}.py` — `httpx` con paginador, `tenacity` retries, `BeautifulSoup` para limpiar HTML.
+- `llm/gemini_extractor.py::GeminiExtractor` — implementa `RequirementsExtractor`. SDK nuevo `google-genai` con `response_schema=JobRequirements`. Reintento con feedback ante validation error. **Nunca levanta** — devuelve `JobRequirements(confidence=0.0)` al fallo total.
+- `persistence/orm_models.py` — `Base`, `JobModel`, `ProfileModel`, `MatchModel` (SQLAlchemy 2.0 con `Mapped[]`, `Vector(384)` de pgvector, JSONB, HNSW index `vector_cosine_ops`, FK CASCADE).
+- `persistence/database.py` — `engine`, `SessionLocal`, `session_scope()` (commit on success, rollback on error).
+- `persistence/mappers.py` — funciones puras ORM ↔ domain.
+- `persistence/sqlalchemy_*_repository.py` — implementaciones de los repos. Convención: **NO commitean** (transacción la maneja el caller).
+- `alembic/` (raíz, no en `src/`) — migraciones versionadas. La inicial crea la extensión `vector`, las 3 tablas y los 4 índices.
+
+### Interfaces (`src/interfaces/`)
+- `api/main.py` — `FastAPI(app)` + lifespan placeholder + include_router.
+- `api/dependencies.py` — `get_session`, `get_*_repository`, `get_requirements_extractor` + `Annotated[..., Depends(...)]` aliases (`SessionDep`, `JobRepositoryDep`, etc.).
+- `api/routers/health.py` — `GET /health` con check de DB + Gemini key.
+- `cli/collect.py` — `python -m src.interfaces.cli.collect --source <name> [--limit N] [--dry-run]`.
+- `cli/extract.py` — `python -m src.interfaces.cli.extract [--limit N] [--print-results]`.
 
 ## Términos de las fuentes (obligatorio)
 
@@ -112,8 +146,8 @@ Si se añade una nueva fuente, validar primero sus términos y replicar las gara
 | Overview transversal | [`docs/00-overview.md`](docs/00-overview.md) | ✅ |
 | 1 · Recolección (Himalayas + Remotive) | [`docs/phase-1-recoleccion.md`](docs/phase-1-recoleccion.md) | ✅ implementada |
 | 2 · Extracción (Gemini + Pydantic) | [`docs/phase-2-extraccion.md`](docs/phase-2-extraccion.md) | ✅ implementada |
-| 3 · Matching (embeddings + scoring) | [`docs/phase-3-matching.md`](docs/phase-3-matching.md) | ⏳ (storage pre-bootstrap ✅) |
-| 4 · API + perfil (FastAPI) | [`docs/phase-4-api-perfil.md`](docs/phase-4-api-perfil.md) | ⏳ |
+| 3 · Matching (embeddings + scoring) | [`docs/phase-3-matching.md`](docs/phase-3-matching.md) | ⏳ (storage + ports pre-bootstrap ✅) |
+| 4 · API + perfil (FastAPI) | [`docs/phase-4-api-perfil.md`](docs/phase-4-api-perfil.md) | ⏳ (bootstrap FastAPI + /health ✅) |
 | 5 · Orquestación (Airflow + Postgres+pgvector) | [`docs/phase-5-orquestacion.md`](docs/phase-5-orquestacion.md) | ⏳ (BD pre-bootstrap ✅) |
 | 6 · README + demo | [`docs/phase-6-readme-demo.md`](docs/phase-6-readme-demo.md) | ⏳ |
 
@@ -121,9 +155,10 @@ Antes de implementar una fase: **leer su doc completo**. Tiene decisiones, schem
 
 ## Cambios respecto al diseño original (importantes)
 
-- **Remotive**: el doc original planeaba RSS. La realidad: Remotive descontinuó RSS (responde HTML 404). Implementado contra API JSON oficial (`https://remotive.com/api/remote-jobs`). Si en el futuro Remotive cambia de nuevo, actualizar `src/sources/remotive.py` y la nota en `docs/phase-1-recoleccion.md` §4.
+- **Remotive**: el doc original planeaba RSS. La realidad: Remotive descontinuó RSS (responde HTML 404). Implementado contra API JSON oficial (`https://remotive.com/api/remote-jobs`).
 - **Deps**: el doc menciona `requirements.txt`; el proyecto usa `pyproject.toml` + `uv.lock`.
 - **Docker-only**: el doc deja Docker para fase 5; lo adoptamos desde fase 1 para tener un único entorno reproducible.
-- **SDK de Gemini**: el doc menciona `google-generativeai` (SDK legacy). Implementado con el SDK nuevo `google-genai`, que soporta `response_schema=PydanticModel` nativo y devuelve la instancia parseada en `response.parsed`. Código más limpio.
-- **Modelo Gemini**: el doc dice `gemini-1.5-flash`. Usamos `gemini-2.5-flash` (generación 2.0 ya fue retirada del catálogo público en producción; 2.5-flash es la flash estable actual).
-- **Persistencia**: el doc original usaba SQL en duro (`sqlalchemy.text("...")`) y un `init.sql`. **Cambiamos a SQLAlchemy 2.0 ORM declarativo + Alembic** (decisión del usuario). Los docs de fases 3/4/5 están reescritos para reflejarlo (`Session` + `Select`, `pg_insert.on_conflict_do_update`, `alembic upgrade head`).
+- **SDK de Gemini**: el doc menciona `google-generativeai` (SDK legacy). Implementado con el SDK nuevo `google-genai`, que soporta `response_schema=PydanticModel` nativo y devuelve la instancia parseada en `response.parsed`.
+- **Modelo Gemini**: el doc dice `gemini-1.5-flash`. Usamos `gemini-2.5-flash` (2.0-flash ya retirada del catálogo público).
+- **Persistencia**: el doc original usaba SQL en duro (`sqlalchemy.text("...")`) y un `init.sql`. **Cambiamos a SQLAlchemy 2.0 ORM declarativo + Alembic + Repository pattern**.
+- **Arquitectura**: el doc original tenía estructura plana por módulo. **Reorganizado a Clean Architecture** (domain → application → infrastructure → interfaces) con ports e implementaciones separadas. Los docs de fases 3/4/5 están reescritos para reflejarlo.
