@@ -68,13 +68,16 @@ from typing import Annotated
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from src.profile.form import ProfileForm
+from src.extraction.schema import JobRequirements
+from src.matching import pipeline as matching_pipeline
 from src.matching.embedder import embed, profile_text_for_embedding
-from src.matching import pipeline as matching_pipeline   # score_profile_against_corpus, embed_pending_jobs
+from src.profile.form import ProfileForm
 from src.storage import pgvector_io as store
+from src.storage.database import SessionLocal, engine
+from src.storage.models import Profile
 
 app = FastAPI(
     title="Job Match Pipeline",
@@ -89,19 +92,27 @@ app.add_middleware(
 )
 
 
-def get_engine() -> Engine:
-    return create_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
+def get_session() -> Session:
+    """FastAPI dependency: yields a Session and ensures cleanup.
+
+    The Session is opened per-request and closed on response.
+    Endpoints commit explicitly when they perform writes.
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
-EngineDep = Annotated[Engine, Depends(get_engine)]
+SessionDep = Annotated[Session, Depends(get_session)]
 
 
 @app.get("/health")
-def health(engine: EngineDep) -> dict:
+def health(session: SessionDep) -> dict:
     db_ok = True
     try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        session.execute(select(1))
     except Exception:
         db_ok = False
     gemini_ok = bool(os.getenv("GEMINI_API_KEY"))
@@ -110,100 +121,100 @@ def health(engine: EngineDep) -> dict:
 
 
 @app.post("/profile", status_code=status.HTTP_201_CREATED)
-def upsert_profile(form: ProfileForm, engine: EngineDep, bg: BackgroundTasks) -> dict:
-    # 1) persistir form_data
-    store.upsert_profile(engine, form.id, form.model_dump(mode="json"))
-    # 2) recomputar embedding
+def upsert_profile_endpoint(
+    form: ProfileForm, session: SessionDep, bg: BackgroundTasks
+) -> dict:
+    store.upsert_profile(session, form.id, form.model_dump(mode="json"))
     vec = embed(profile_text_for_embedding(form))
-    store.upsert_profile_embedding(engine, form.id, vec)
-    # 3) disparar scoring en background (no bloquea la respuesta)
-    bg.add_task(matching_pipeline.score_profile_against_corpus, engine, form)
+    store.upsert_profile_embedding(session, form.id, vec)
+    session.commit()
+    # Scoring corre en background; abre su propio session_scope.
+    bg.add_task(matching_pipeline.score_profile_against_corpus, form)
     return {"profile_id": form.id, "matching": "scheduled"}
 
 
 @app.get("/matches")
-def list_matches(engine: EngineDep, profile_id: str, limit: int = 20) -> dict:
+def list_matches(
+    session: SessionDep, profile_id: str, limit: int = 20
+) -> dict:
     if limit < 1 or limit > 100:
         raise HTTPException(400, "limit must be between 1 and 100")
-    rows = store.top_matches_for_profile(engine, profile_id, limit=limit)
+    rows = store.top_matches_for_profile(session, profile_id, limit=limit)
     return {
         "profile_id": profile_id,
         "count": len(rows),
         "matches": [
             {
-                "job_id": r["job_id"],
-                "title": r["title"],
-                "company": r["company"],
-                "url": r["url"],
-                "source": r["source"],
-                "llm_score": r["llm_score"],
-                "semantic_score": round(r["semantic_score"], 3),
-                "verdict": r["verdict"],
+                "job_id": m.job_id,
+                "title": j.title,
+                "company": j.company,
+                "url": j.url,
+                "source": j.source,
+                "llm_score": m.llm_score,
+                "semantic_score": round(m.semantic_score, 3) if m.semantic_score else None,
+                "verdict": m.verdict,
             }
-            for r in rows
+            for m, j in rows
         ],
         "source_attribution": "Jobs via Himalayas (himalayas.app) and Remotive (remotive.com)",
     }
 
 
 @app.get("/matches/{job_id}")
-def match_detail(engine: EngineDep, job_id: str, profile_id: str) -> dict:
-    sql = text("""
-        SELECT m.semantic_score, m.llm_score, m.verdict, m.scored_at,
-               j.title, j.company, j.url, j.source, j.raw_text, j.requirements
-        FROM matches m JOIN jobs j ON j.id = m.job_id
-        WHERE m.profile_id = :p AND m.job_id = :j
-    """)
-    with engine.connect() as conn:
-        row = conn.execute(sql, {"p": profile_id, "j": job_id}).mappings().first()
+def match_detail(session: SessionDep, job_id: str, profile_id: str) -> dict:
+    from src.storage.models import Job, Match
+    stmt = (
+        select(Match, Job)
+        .join(Job, Match.job_id == Job.id)
+        .where(Match.profile_id == profile_id, Match.job_id == job_id)
+    )
+    row = session.execute(stmt).first()
     if row is None:
         raise HTTPException(404, "match not found")
+    m, j = row
     return {
-        "job_id": job_id,
-        "title": row["title"],
-        "company": row["company"],
-        "url": row["url"],
-        "source": row["source"],
-        "llm_score": row["llm_score"],
-        "semantic_score": round(row["semantic_score"], 3),
-        "verdict": row["verdict"],
-        "requirements": row["requirements"],
-        "raw_text": row["raw_text"],   # útil para que el usuario verifique
-        "scored_at": row["scored_at"].isoformat() if row["scored_at"] else None,
+        "job_id": j.id,
+        "title": j.title,
+        "company": j.company,
+        "url": j.url,
+        "source": j.source,
+        "llm_score": m.llm_score,
+        "semantic_score": round(m.semantic_score, 3) if m.semantic_score else None,
+        "verdict": m.verdict,
+        "requirements": j.requirements,
+        "raw_text": j.raw_text,           # útil para que el usuario verifique
+        "scored_at": m.scored_at.isoformat() if m.scored_at else None,
     }
 
 
 @app.post("/jobs/refresh", status_code=status.HTTP_202_ACCEPTED)
-def refresh_jobs(engine: EngineDep, bg: BackgroundTasks) -> dict:
-    """Dispara una corrida manual del pipeline completo (además del schedule de 12h).
-
-    Implementación: ejecuta los mismos pasos que el DAG, en background.
-    """
+def refresh_jobs(bg: BackgroundTasks) -> dict:
+    """Dispara una corrida manual del pipeline completo (además del schedule de 12h)."""
+    from src.extraction.extractor import extract_requirements
     from src.matching import pipeline as mp
     from src.sources.himalayas import HimalayasSource
     from src.sources.remotive import RemotiveSource
-    from src.extraction.extractor import extract_requirements
+    from src.storage.database import session_scope
 
     def _run():
         # 1) recolectar + upsert
-        for src_cls in (HimalayasSource, RemotiveSource):
-            for job in src_cls().fetch():
-                store.upsert_job(engine, job)
+        with session_scope() as session:
+            for src_cls in (HimalayasSource, RemotiveSource):
+                for job in src_cls().fetch():
+                    store.upsert_job(session, job)
         # 2) extraer requirements faltantes
-        for job in store.list_jobs_without_requirements(engine, limit=100):
-            req = extract_requirements(job.raw_text)
-            store.update_job_requirements(engine, job.id, req)
+        with session_scope() as session:
+            for job in store.list_jobs_without_requirements(session, limit=100):
+                req = extract_requirements(job.raw_text)
+                store.update_job_requirements(session, job.id, req)
         # 3) embeddings faltantes
-        mp.embed_pending_jobs(engine)
+        mp.embed_pending_jobs()
         # 4) re-scorear todos los perfiles activos
-        with engine.connect() as conn:
-            ids = [r[0] for r in conn.execute(text("SELECT id FROM profiles"))]
-        for pid in ids:
-            form_row = conn.execute(
-                text("SELECT form_data FROM profiles WHERE id = :id"), {"id": pid}
-            ).mappings().one()
-            form = ProfileForm.model_validate(form_row["form_data"])
-            mp.score_profile_against_corpus(engine, form)
+        with session_scope() as session:
+            profiles = session.scalars(select(Profile)).all()
+        for p in profiles:
+            form = ProfileForm.model_validate(p.form_data)
+            mp.score_profile_against_corpus(form)
 
     bg.add_task(_run)
     return {"status": "scheduled"}

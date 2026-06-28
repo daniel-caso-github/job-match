@@ -50,48 +50,55 @@ Detalle de cada task → `phase-5-orquestacion.md`.
 
 ## 4. Modelo de datos consolidado
 
-Postgres 16 con extensión `pgvector` e índice HNSW.
+Postgres 16 con extensión `pgvector` e índice HNSW. **El schema se define con SQLAlchemy 2.0 declarative** (`src/storage/models.py`) y se aplica con **Alembic** (`alembic upgrade head`) — sin `init.sql`. El SQL equivalente queda implícito.
 
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
+Resumen de los modelos ORM (fuente de verdad: `src/storage/models.py`):
 
-CREATE TABLE jobs (
-    id            TEXT PRIMARY KEY,           -- hash(source + url), idempotente
-    source        TEXT NOT NULL,              -- 'himalayas' | 'remotive' | ...
-    url           TEXT NOT NULL,              -- enlace de vuelta (requisito legal)
-    title         TEXT NOT NULL,
-    company       TEXT,
-    raw_text      TEXT NOT NULL,              -- descripción original
-    requirements  JSONB,                      -- JobRequirements (ver fase 2)
-    embedding     VECTOR(384),                -- bge-small-en-v1.5
-    posted_at     TIMESTAMPTZ,
-    country       TEXT,
-    remote        BOOLEAN,
-    fetched_at    TIMESTAMPTZ DEFAULT now()
-);
+```python
+class Job(Base):
+    __tablename__ = "jobs"
+    id:            Mapped[str]                 = mapped_column(primary_key=True)       # hash(source+url)
+    source:        Mapped[str]                                                          # 'himalayas' | 'remotive' | ...
+    url:           Mapped[str]   = mapped_column(Text)                                  # enlace de vuelta (legal)
+    title:         Mapped[str]   = mapped_column(Text)
+    company:       Mapped[str | None] = mapped_column(Text)
+    raw_text:      Mapped[str]   = mapped_column(Text)
+    requirements:  Mapped[dict | None] = mapped_column(JSONB)                           # JobRequirements (fase 2)
+    embedding:     Mapped[list[float] | None] = mapped_column(Vector(384))              # bge-small-en-v1.5
+    posted_at:     Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    country:       Mapped[str | None]
+    remote:        Mapped[bool | None]
+    fetched_at:    Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    __table_args__ = (
+        Index("jobs_embedding_hnsw", "embedding",
+              postgresql_using="hnsw",
+              postgresql_ops={"embedding": "vector_cosine_ops"}),
+        Index("jobs_fetched_at", "fetched_at"),
+    )
 
-CREATE TABLE profiles (
-    id            TEXT PRIMARY KEY,           -- uuid o slug
-    form_data     JSONB NOT NULL,             -- ProfileForm (ver fase 4)
-    embedding     VECTOR(384),
-    updated_at    TIMESTAMPTZ DEFAULT now()
-);
+class Profile(Base):
+    __tablename__ = "profiles"
+    id:         Mapped[str]   = mapped_column(primary_key=True)
+    form_data:  Mapped[dict]  = mapped_column(JSONB)                                    # ProfileForm (fase 4)
+    embedding:  Mapped[list[float] | None] = mapped_column(Vector(384))
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True),
+                                                 server_default=func.now(),
+                                                 onupdate=func.now())
 
-CREATE TABLE matches (
-    profile_id     TEXT REFERENCES profiles(id) ON DELETE CASCADE,
-    job_id         TEXT REFERENCES jobs(id)     ON DELETE CASCADE,
-    semantic_score REAL,                       -- similitud coseno (0..1)
-    llm_score      INT,                        -- 0..100
-    verdict        JSONB,                      -- Verdict (ver fase 3)
-    scored_at      TIMESTAMPTZ DEFAULT now(),
-    PRIMARY KEY (profile_id, job_id)
-);
-
-CREATE INDEX jobs_embedding_hnsw ON jobs USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX matches_llm_score   ON matches (profile_id, llm_score DESC);
+class Match(Base):
+    __tablename__ = "matches"
+    profile_id:    Mapped[str] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True)
+    job_id:        Mapped[str] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
+    semantic_score: Mapped[float | None]
+    llm_score:     Mapped[int | None]
+    verdict:       Mapped[dict | None] = mapped_column(JSONB)                            # Verdict (fase 3)
+    scored_at:     Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    __table_args__ = (Index("matches_llm_score", "profile_id", "llm_score"),)
 ```
 
-Schemas Pydantic completos → `phase-2-extraccion.md` (JobRequirements), `phase-3-matching.md` (Verdict), `phase-4-api-perfil.md` (ProfileForm).
+Migraciones: una sola revision inicial (`alembic/versions/<hash>_initial_schema.py`) que ejecuta `CREATE EXTENSION IF NOT EXISTS vector` y crea las tres tablas + los cuatro índices. Cambios futuros al schema → `alembic revision --autogenerate -m "..."` y revisar el diff antes de `alembic upgrade head`.
+
+Schemas Pydantic relacionados (no son ORM, son validación de datos): `phase-2-extraccion.md::JobRequirements`, `phase-3-matching.md::Verdict`, `phase-4-api-perfil.md::ProfileForm`. La app valida con Pydantic en el borde y persiste con ORM.
 
 ---
 
@@ -114,16 +121,19 @@ job_match_pipeline/
 │   │   ├── semantic.py           # similitud coseno (pgvector)
 │   │   └── llm_scorer.py         # Gemini: Verdict (fit + riesgos)
 │   ├── storage/
-│   │   └── pgvector_io.py        # upsert idempotente
+│   │   ├── database.py           # engine + SessionLocal + session_scope
+│   │   ├── models.py             # SQLAlchemy 2.0: Job / Profile / Match
+│   │   └── pgvector_io.py        # upsert idempotente + queries ORM (fase 3)
 │   ├── profile/
 │   │   └── form.py               # ProfileForm + validación
 │   └── api/
 │       └── main.py               # FastAPI + Swagger
 ├── tests/
 ├── docs/                         # este directorio
-├── docker-compose.yml            # Postgres+pgvector, Airflow
-├── init.sql                      # extensión + tablas + índices
-├── requirements.txt
+├── docker-compose.yml            # Postgres+pgvector, Airflow (fase 5)
+├── alembic.ini                   # Alembic config (sqlalchemy.url se inyecta desde env)
+├── alembic/                      # migraciones (env.py + versions/)
+├── pyproject.toml + uv.lock      # uv-managed deps
 ├── .env.example                  # GEMINI_API_KEY, DATABASE_URL, ...
 └── README.md
 ```
@@ -137,14 +147,17 @@ job_match_pipeline/
 | Orquestación | Airflow 2.x | DAG cada 12h, retries, idempotencia |
 | API | FastAPI + Uvicorn | endpoints + Swagger auto |
 | Validación | Pydantic v2 | esquemas (`RawJob`, `JobRequirements`, `Verdict`, `ProfileForm`) |
-| LLM | Gemini (`google-generativeai`) | extracción estructurada + scoring |
+| LLM | Gemini (`google-genai`) | extracción estructurada + scoring |
 | Embeddings | `sentence-transformers` + `BAAI/bge-small-en-v1.5` | vectores de 384 dims, CPU |
+| ORM | **SQLAlchemy 2.0** (declarative + `Mapped`) + `pgvector.sqlalchemy.Vector` | modelos de Job/Profile/Match |
+| Migraciones | **Alembic** | esquema versionado, una revisión inicial |
 | DB | Postgres 16 + `pgvector` (HNSW) | jobs, profiles, matches |
+| Driver Postgres | `psycopg[binary]` v3 | DBAPI usado por SQLAlchemy |
 | HTTP client | `httpx` | Himalayas API + Remotive API |
 | Tests | `pytest` + `httpx.AsyncClient` | unit + integration |
 | Infra | Docker Compose | Postgres, Airflow webserver/scheduler |
 
-Versiones pineadas → `phase-5-orquestacion.md` (`requirements.txt`).
+Versiones pineadas → `pyproject.toml` + `uv.lock`.
 
 ---
 

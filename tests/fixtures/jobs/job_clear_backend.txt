@@ -1,0 +1,23 @@
+Senior Backend Engineer (Python)
+Acme Corp — Remote, LATAM-friendly
+
+We are looking for a Senior Backend Engineer with 5+ years of experience to join
+our distributed team.
+
+Stack
+- Python 3.11+
+- FastAPI
+- PostgreSQL
+- Redis
+- Docker / Kubernetes
+
+Requirements
+- 5+ years building production backends
+- Strong English (C1 minimum) — daily standups in English
+- Comfortable working asynchronously across LATAM timezones
+- Experience with REST API design and event-driven systems
+
+What we offer
+- Salary range: $90k - $130k USD
+- 100% remote, work from anywhere in the Americas
+- 4-day work week pilot

@@ -16,56 +16,31 @@ Idempotencia es **requisito duro**: cualquier task del DAG debe poder reintentar
 
 ---
 
-## 2. `init.sql` — migraciones
+## 2. Migraciones con Alembic
 
-Archivo: `init.sql` (raíz del repo, montado en el contenedor de Postgres como `docker-entrypoint-initdb.d`).
+> **Nota de corrección (post-implementación):** el plan original usaba un `init.sql` montado como `docker-entrypoint-initdb.d`. **Cambiamos a Alembic** (decisión del usuario al introducir el ORM en pre-bootstrap). El schema es la proyección de los modelos `src/storage/models.py` (SQLAlchemy 2.0 declarativo) — autogenerada y versionada bajo `alembic/versions/`. Ya no hay `init.sql`.
 
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
+Archivos relevantes:
+- `alembic.ini` — config; `sqlalchemy.url` se inyecta desde `$DATABASE_URL` en `alembic/env.py`.
+- `alembic/env.py` — importa `Base` de `src.storage.models`, registra `pgvector.sqlalchemy`, configura `target_metadata = Base.metadata`.
+- `alembic/versions/<hash>_initial_schema.py` — primera migración (manual + autogenerate): ejecuta `CREATE EXTENSION IF NOT EXISTS vector`, crea las tres tablas y los cuatro índices (incluyendo el HNSW `vector_cosine_ops`).
 
-CREATE TABLE IF NOT EXISTS jobs (
-    id            TEXT PRIMARY KEY,
-    source        TEXT NOT NULL,
-    url           TEXT NOT NULL,
-    title         TEXT NOT NULL,
-    company       TEXT,
-    raw_text      TEXT NOT NULL,
-    requirements  JSONB,
-    embedding     VECTOR(384),
-    posted_at     TIMESTAMPTZ,
-    country       TEXT,
-    remote        BOOLEAN,
-    fetched_at    TIMESTAMPTZ DEFAULT now()
-);
+**Comandos canónicos:**
+```bash
+# Aplicar todas las migraciones pendientes (en CI, en producción, y tras git pull):
+docker compose run --rm app alembic upgrade head
 
-CREATE TABLE IF NOT EXISTS profiles (
-    id            TEXT PRIMARY KEY,
-    form_data     JSONB NOT NULL,
-    embedding     VECTOR(384),
-    updated_at    TIMESTAMPTZ DEFAULT now()
-);
+# Crear una nueva migración después de cambiar modelos:
+docker compose run --rm app alembic revision --autogenerate -m "add X column"
 
-CREATE TABLE IF NOT EXISTS matches (
-    profile_id     TEXT REFERENCES profiles(id) ON DELETE CASCADE,
-    job_id         TEXT REFERENCES jobs(id)     ON DELETE CASCADE,
-    semantic_score REAL,
-    llm_score      INT,
-    verdict        JSONB,
-    scored_at      TIMESTAMPTZ DEFAULT now(),
-    PRIMARY KEY (profile_id, job_id)
-);
-
-CREATE INDEX IF NOT EXISTS jobs_embedding_hnsw
-  ON jobs USING hnsw (embedding vector_cosine_ops);
-
-CREATE INDEX IF NOT EXISTS matches_llm_score
-  ON matches (profile_id, llm_score DESC);
-
-CREATE INDEX IF NOT EXISTS jobs_fetched_at
-  ON jobs (fetched_at DESC);
+# Ver historia:
+docker compose run --rm app alembic history --verbose
 ```
 
-**Alembic vs script:** Para portafolio, `init.sql` es suficiente y se ejecuta automáticamente por el contenedor `pgvector/pgvector:pg16` la primera vez que arranca. Si más adelante se necesitan migraciones evolutivas, se puede sumar Alembic sin tocar el resto.
+**Reglas:**
+- Toda modificación al schema entra por una nueva revision; no editar revisions ya aplicadas en otros entornos.
+- Revisar siempre el diff autogenerado antes de aplicar — Alembic puede no detectar `postgresql_using`/`postgresql_ops` para índices de pgvector (la revision inicial los recibió bien, pero verificar cada vez).
+- La extensión `vector` se crea en la primera migración. Migraciones futuras no necesitan re-crearla.
 
 ---
 
@@ -108,7 +83,7 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - app-db-data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      # NB: no se monta init.sql — Alembic se encarga (alembic upgrade head)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U app -d jobmatch"]
       interval: 5s
@@ -208,39 +183,41 @@ TOP_K_FOR_LLM=30
 
 ---
 
-## 5. `requirements.txt` (consolidado)
+## 5. Dependencias (`pyproject.toml`)
 
+> **Nota de corrección:** el proyecto no usa `requirements.txt`. Las deps se gestionan con `uv` (`pyproject.toml` + `uv.lock`). Para Airflow, que tradicionalmente se configura con requirements, exportamos al vuelo:
+> ```bash
+> uv export --frozen --no-dev --no-emit-project --format requirements-txt > /tmp/airflow-reqs.txt
+> ```
+> y montamos ese archivo en los contenedores de Airflow. O construimos una imagen Airflow custom que ya tenga las deps instaladas (recomendado).
+
+Resumen de deps **del proyecto** (las que ya están en `pyproject.toml` tras pre-bootstrap de fase 3/5):
+
+```toml
+dependencies = [
+  # sources (fase 1)
+  "httpx>=0.27",
+  "beautifulsoup4>=4.12",
+  "tenacity>=8.2",
+  # validación (transversal)
+  "pydantic>=2.5",
+  # extracción + scoring LLM (fase 2 y 3)
+  "google-genai>=1.0",
+  # persistencia (fase 3 + 5)
+  "sqlalchemy>=2.0,<3",
+  "psycopg[binary]>=3.1",
+  "pgvector>=0.2.5",
+  "alembic>=1.13",
+  # matching (fase 3) — se sumará al implementar
+  # "sentence-transformers>=2.7",
+  # "numpy>=1.26",
+  # api (fase 4) — se sumará al implementar
+  # "fastapi>=0.110",
+  # "uvicorn[standard]>=0.27",
+]
 ```
-# core
-pydantic>=2.5,<3
-sqlalchemy>=2.0,<3
-psycopg[binary]>=3.1
-pgvector>=0.2.5
 
-# sources
-httpx>=0.27
-feedparser>=6.0
-beautifulsoup4>=4.12
-tenacity>=8.2
-
-# extraction + scoring
-google-generativeai>=0.7
-
-# embeddings
-sentence-transformers>=2.7
-numpy>=1.26
-
-# api
-fastapi>=0.110
-uvicorn[standard]>=0.27
-
-# orquestación: airflow se instala vía la imagen oficial; aquí solo los providers usados
-apache-airflow-providers-postgres>=5.10
-
-# tests
-pytest>=8.0
-pytest-asyncio>=0.23
-```
+Para Airflow se monta el código del proyecto como volumen (`./src:/opt/airflow/repo/src:ro`) y se instalan las deps Python con `uv pip install --system -r <reqs export>` dentro del contenedor Airflow al arrancar (o build de imagen custom).
 
 ---
 
@@ -252,7 +229,7 @@ import os
 from datetime import datetime, timedelta
 
 from airflow.decorators import dag, task
-from sqlalchemy import create_engine, text
+from sqlalchemy import select
 
 
 DEFAULT_ARGS = {
@@ -262,10 +239,6 @@ DEFAULT_ARGS = {
     "retry_exponential_backoff": True,
     "max_retry_delay": timedelta(minutes=30),
 }
-
-
-def _engine():
-    return create_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
 
 
 @dag(
@@ -285,33 +258,33 @@ def job_match():
         from src.sources.himalayas import HimalayasSource
         from src.sources.remotive import RemotiveSource
         from src.storage import pgvector_io as store
-        engine = _engine()
+        from src.storage.database import session_scope
         n = 0
-        for src_cls in (HimalayasSource, RemotiveSource):
-            for job in src_cls().fetch():
-                store.upsert_job(engine, job)
-                n += 1
+        with session_scope() as session:
+            for src_cls in (HimalayasSource, RemotiveSource):
+                for job in src_cls().fetch():
+                    store.upsert_job(session, job)
+                    n += 1
         return n
 
     @task
     def extraer_requisitos(_collected: int) -> int:
         from src.extraction.extractor import extract_requirements
         from src.storage import pgvector_io as store
-        engine = _engine()
-        pending = store.list_jobs_without_requirements(engine, limit=200)
-        for job in pending:
-            req = extract_requirements(job.raw_text)
-            store.update_job_requirements(engine, job.id, req)
+        from src.storage.database import session_scope
+        with session_scope() as session:
+            pending = store.list_jobs_without_requirements(session, limit=200)
+            for job in pending:
+                req = extract_requirements(job.raw_text)
+                store.update_job_requirements(session, job.id, req)
         return len(pending)
 
     @task
     def embeddings(_extracted: int) -> int:
         from src.matching import pipeline as mp
-        engine = _engine()
-        # procesa en lotes hasta que no queden pendientes
         total = 0
         while True:
-            n = mp.embed_pending_jobs(engine, batch_size=32)
+            n = mp.embed_pending_jobs(batch_size=32)
             total += n
             if n == 0:
                 break
@@ -321,13 +294,14 @@ def job_match():
     def score_perfiles(_embedded: int) -> int:
         from src.matching import pipeline as mp
         from src.profile.form import ProfileForm
-        engine = _engine()
-        with engine.connect() as conn:
-            rows = conn.execute(text("SELECT id, form_data FROM profiles")).mappings().all()
+        from src.storage.database import session_scope
+        from src.storage.models import Profile
+        with session_scope() as session:
+            profiles = session.scalars(select(Profile)).all()
         total = 0
-        for r in rows:
-            form = ProfileForm.model_validate(r["form_data"])
-            total += mp.score_profile_against_corpus(engine, form)
+        for p in profiles:
+            form = ProfileForm.model_validate(p.form_data)
+            total += mp.score_profile_against_corpus(form)
         return total
 
     n_collected = recolectar()
@@ -407,6 +381,6 @@ curl 'http://127.0.0.1:8000/matches?profile_id=daniel-2026&limit=10' | jq
 
 - **Despliegue cloud** (Cloud Run, ECS, Fly.io...). El proyecto es local + portafolio.
 - **Observabilidad avanzada** (Prometheus, Grafana). Logs de Airflow + tabla `matches` alcanzan.
-- **Alembic / migraciones evolutivas**. `init.sql` basta para v0.
+- (Alembic ya implementado; este punto del doc original quedó obsoleto.)
 - **HPA / scaling horizontal del API**. Uvicorn 1 worker es suficiente.
 - **CI/CD**. Si se quiere, una acción de GitHub que corra `pytest` está bien — fuera de alcance del MVP.

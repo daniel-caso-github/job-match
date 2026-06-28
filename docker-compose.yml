@@ -1,13 +1,42 @@
-# Fase 1: solo el servicio `app` para correr CLIs y tests en contenedor.
-# Fases siguientes (3, 5) sumarán: app-db (pgvector), airflow-*, api.
+# Fase 1-2 (recolección + extracción) + pre-bootstrap fase 3/5 (Postgres+pgvector).
+# Fase 5 sumará: airflow-webserver, airflow-scheduler, airflow-db, api.
 services:
+  app-db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: jobmatch
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - app-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d jobmatch"]
+      interval: 5s
+      retries: 10
+
   app:
     build:
       context: .
       dockerfile: Dockerfile
     image: job-match-pipeline:dev
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://app:app@app-db:5432/jobmatch
     volumes:
       - ./src:/app/src:ro
       - ./tests:/app/tests:ro
+      # alembic mounted rw because `alembic revision` writes new migration files.
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini:ro
     working_dir: /app
+    depends_on:
+      app-db:
+        condition: service_healthy
     command: pytest -v
+
+volumes:
+  app-db-data:

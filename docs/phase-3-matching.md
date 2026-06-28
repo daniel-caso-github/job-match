@@ -91,15 +91,17 @@ Aprovecha `pgvector` con índice HNSW. La query es una sola.
 ```python
 from __future__ import annotations
 import numpy as np
-from sqlalchemy import text
-from sqlalchemy.engine import Engine
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from src.storage.models import Job, Match
 
 SEMANTIC_THRESHOLD = 0.65   # similitud coseno mínima (0..1) para pasar al LLM
 TOP_K_FOR_LLM = 30          # cuántas ofertas pasan al LLM scorer por corrida
 
 
 def semantic_top_k(
-    engine: Engine,
+    session: Session,
     profile_embedding: np.ndarray,
     *,
     k: int = TOP_K_FOR_LLM,
@@ -111,43 +113,30 @@ def semantic_top_k(
     - `semantic_score` se computa como 1 - cosine_distance (rango 0..1).
     - Filtra ofertas con embedding NULL y las que ya están scoreadas para el perfil
       (si `only_unscored_for_profile` se pasa).
-    """
-    vec = profile_embedding.tolist()
 
-    sql = """
-        SELECT
-            j.id,
-            1 - (j.embedding <=> CAST(:vec AS vector)) AS semantic_score
-        FROM jobs j
-        WHERE j.embedding IS NOT NULL
-        {filter_already_scored}
-        ORDER BY j.embedding <=> CAST(:vec AS vector)
-        LIMIT :k
+    Usa el operador `<=>` (cosine distance) de pgvector a través del helper
+    `Job.embedding.cosine_distance(...)` que registra `pgvector.sqlalchemy`.
     """
+    distance = Job.embedding.cosine_distance(profile_embedding.tolist())
+
+    stmt = (
+        select(Job.id, (1 - distance).label("semantic_score"))
+        .where(Job.embedding.is_not(None))
+        .order_by(distance)
+        .limit(k)
+    )
     if only_unscored_for_profile:
-        filter_clause = """
-          AND NOT EXISTS (
-            SELECT 1 FROM matches m
-             WHERE m.job_id = j.id
-               AND m.profile_id = :profile_id
-          )
-        """
-        sql = sql.format(filter_already_scored=filter_clause)
-        params = {"vec": vec, "k": k, "profile_id": only_unscored_for_profile}
-    else:
-        sql = sql.format(filter_already_scored="")
-        params = {"vec": vec, "k": k}
+        already_scored = select(Match.job_id).where(Match.profile_id == only_unscored_for_profile)
+        stmt = stmt.where(Job.id.not_in(already_scored))
 
-    with engine.connect() as conn:
-        rows = conn.execute(text(sql), params).all()
-
+    rows = session.execute(stmt).all()
     return [(r.id, float(r.semantic_score)) for r in rows if r.semantic_score >= threshold]
 ```
 
 **Notas:**
 - `<=>` es cosine distance (0..2). Como los vectores están normalizados L2, la distancia coseno entre dos vectores positivos queda en 0..1; convertimos a similitud con `1 - distance`.
-- `CAST(:vec AS vector)` es necesario porque sqlalchemy no tipea vectores automáticamente.
-- `only_unscored_for_profile` permite que el DAG (fase 5) procese solo las nuevas — clave para idempotencia.
+- `Job.embedding.cosine_distance(vec)` es el helper que `pgvector.sqlalchemy` registra sobre la columna `Vector` — equivale a `embedding <=> vec` pero queda dentro del ORM (sin `text()`).
+- `Job.id.not_in(select(Match.job_id).where(...))` evita re-scorear ofertas ya procesadas para el perfil — clave para la idempotencia que el DAG (fase 5) explota.
 
 ---
 
@@ -266,62 +255,70 @@ Una función que une las piezas. La llama el DAG (fase 5) y también `POST /jobs
 Archivo: `src/matching/__init__.py` o `src/matching/pipeline.py`:
 
 ```python
-from sqlalchemy.engine import Engine
-
 from src.extraction.schema import JobRequirements
 from src.profile.form import ProfileForm
 from src.storage import pgvector_io as store
-from .embedder import embed, profile_text_for_embedding, job_text_for_embedding
-from .semantic import semantic_top_k
+from src.storage.database import session_scope
+from .embedder import embed, job_text_for_embedding, profile_text_for_embedding
 from .llm_scorer import score
+from .semantic import semantic_top_k
 
 
-def score_profile_against_corpus(engine: Engine, profile: ProfileForm) -> int:
+def score_profile_against_corpus(profile: ProfileForm) -> int:
     """Para un perfil dado, calcula matches sobre todo el corpus.
 
     Pasos:
-      1) embed del perfil (o reusar si ya está en profiles).
-      2) filtro semántico → top K ids.
-      3) por cada id: carga RawJob + JobRequirements desde la BD,
-         llama al LLM scorer, persiste el match.
+      1) embed del perfil + upsert.
+      2) filtro semántico → top K ids (excluye los ya scoreados).
+      3) por cada job: carga Job ORM (con .requirements ya parseado), llama al
+         LLM scorer, upsert del Match.
 
     Devuelve cuántos matches se computaron en esta corrida.
+    Toda la unidad de trabajo en una transacción gestionada por session_scope.
     """
-    profile_text = profile_text_for_embedding(profile)
-    profile_vec = embed(profile_text)
-    store.upsert_profile_embedding(engine, profile.id, profile_vec)
-
-    top = semantic_top_k(engine, profile_vec, only_unscored_for_profile=profile.id)
+    profile_vec = embed(profile_text_for_embedding(profile))
 
     n = 0
-    for job_id, sem_score in top:
-        job, req = store.get_job_with_requirements(engine, job_id)
-        if req is None:
-            # Aún no extraído. El DAG lo procesará en la próxima corrida.
-            continue
-        verdict = score(profile, req)
-        store.upsert_match(
-            engine,
-            profile_id=profile.id,
-            job_id=job_id,
-            semantic_score=sem_score,
-            llm_score=verdict.score,
-            verdict=verdict,
-        )
-        n += 1
+    with session_scope() as session:
+        store.upsert_profile_embedding(session, profile.id, profile_vec)
+        top = semantic_top_k(session, profile_vec, only_unscored_for_profile=profile.id)
+
+        for job_id, sem_score in top:
+            job = store.get_job(session, job_id)
+            if job is None or job.requirements is None:
+                # Aún no extraído. El DAG lo procesará en la próxima corrida.
+                continue
+            req = JobRequirements.model_validate(job.requirements)
+            verdict = score(profile, req)
+            store.upsert_match(
+                session,
+                profile_id=profile.id,
+                job_id=job_id,
+                semantic_score=sem_score,
+                llm_score=verdict.score,
+                verdict=verdict,
+            )
+            n += 1
     return n
 
 
-def embed_pending_jobs(engine: Engine, batch_size: int = 32) -> int:
+def embed_pending_jobs(batch_size: int = 32) -> int:
     """Embedde las ofertas que aún no tienen embedding. Idempotente."""
-    pending = store.list_jobs_without_embedding(engine, limit=batch_size * 4)
-    if not pending:
-        return 0
-    texts = [job_text_for_embedding(j, r) for j, r in pending]
-    vecs = embed(texts)
-    for (job, _), vec in zip(pending, vecs):
-        store.upsert_job_embedding(engine, job.id, vec)
-    return len(pending)
+    with session_scope() as session:
+        pending = store.list_jobs_without_embedding(session, limit=batch_size * 4)
+        if not pending:
+            return 0
+        texts = [
+            job_text_for_embedding(
+                j,
+                JobRequirements.model_validate(j.requirements) if j.requirements else None,
+            )
+            for j in pending
+        ]
+        vecs = embed(texts)
+        for job, vec in zip(pending, vecs, strict=True):
+            store.upsert_job_embedding(session, job.id, vec)
+        return len(pending)
 ```
 
 ---
@@ -330,114 +327,104 @@ def embed_pending_jobs(engine: Engine, batch_size: int = 32) -> int:
 
 Archivo: `src/storage/pgvector_io.py`
 
-Funciones expuestas (firma + comportamiento). Uso de SQLAlchemy Core + `psycopg2/psycopg` (driver decidido en fase 5 por `requirements.txt`).
+Capa **fina** sobre los modelos ORM (`src/storage/models.py`: `Job`, `Profile`, `Match`). Cero `text()`: todo es `select()` / `insert()` con `on_conflict_do_update`. Las funciones toman un `Session` ya abierto (transacción manejada por el llamador con `session_scope()`).
 
 ```python
 from __future__ import annotations
-import json
-import numpy as np
-from typing import Iterable
-from sqlalchemy import text
-from sqlalchemy.engine import Engine
+from collections.abc import Iterable
 
-from src.sources.base import RawJob
+import numpy as np
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.orm import Session
+
 from src.extraction.schema import JobRequirements
 from src.matching.llm_scorer import Verdict   # ajustar import si Verdict vive en otro módulo
+from src.sources.base import RawJob
+from src.storage.models import Job, Match, Profile
 
 
 # ---------- Jobs ----------
 
-def upsert_job(engine: Engine, job: RawJob) -> None:
-    """Inserta una oferta; si el id ya existe, no toca requirements ni embedding."""
-    sql = text("""
-        INSERT INTO jobs (id, source, url, title, company, raw_text, posted_at, country, remote)
-        VALUES (:id, :source, :url, :title, :company, :raw_text, :posted_at, :country, :remote)
-        ON CONFLICT (id) DO UPDATE SET
-            -- solo refrescar metadatos baratos; preservar requirements/embedding ya calculados
-            title    = EXCLUDED.title,
-            company  = EXCLUDED.company,
-            raw_text = EXCLUDED.raw_text
-    """)
-    with engine.begin() as conn:
-        conn.execute(sql, job.model_dump(mode="json"))
+def upsert_job(session: Session, job: RawJob) -> None:
+    """Inserta una oferta; si el id ya existe, preserva requirements/embedding y
+    solo refresca title/company/raw_text/url (metadatos baratos)."""
+    payload = job.model_dump(mode="json")
+    payload["url"] = str(payload["url"])
+
+    stmt = pg_insert(Job).values(**payload)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["id"],
+        set_={
+            "title": stmt.excluded.title,
+            "company": stmt.excluded.company,
+            "raw_text": stmt.excluded.raw_text,
+            "url": stmt.excluded.url,
+        },
+    )
+    session.execute(stmt)
 
 
-def update_job_requirements(engine: Engine, job_id: str, req: JobRequirements) -> None:
-    with engine.begin() as conn:
-        conn.execute(
-            text("UPDATE jobs SET requirements = CAST(:r AS jsonb) WHERE id = :id"),
-            {"r": req.model_dump_json(), "id": job_id},
-        )
+def update_job_requirements(session: Session, job_id: str, req: JobRequirements) -> None:
+    job = session.get(Job, job_id)
+    if job is None:
+        raise LookupError(f"Job {job_id} not found")
+    job.requirements = req.model_dump(mode="json")
 
 
-def upsert_job_embedding(engine: Engine, job_id: str, vec: np.ndarray) -> None:
-    with engine.begin() as conn:
-        conn.execute(
-            text("UPDATE jobs SET embedding = CAST(:v AS vector) WHERE id = :id"),
-            {"v": vec.tolist(), "id": job_id},
-        )
+def upsert_job_embedding(session: Session, job_id: str, vec: np.ndarray) -> None:
+    job = session.get(Job, job_id)
+    if job is None:
+        raise LookupError(f"Job {job_id} not found")
+    job.embedding = vec.tolist()
 
 
-def list_jobs_without_requirements(engine: Engine, limit: int = 100) -> list[RawJob]:
-    sql = text("SELECT * FROM jobs WHERE requirements IS NULL ORDER BY fetched_at DESC LIMIT :n")
-    with engine.connect() as conn:
-        rows = conn.execute(sql, {"n": limit}).mappings().all()
-    return [RawJob.model_validate(dict(r)) for r in rows]
+def list_jobs_without_requirements(session: Session, limit: int = 100) -> list[Job]:
+    stmt = (
+        select(Job)
+        .where(Job.requirements.is_(None))
+        .order_by(Job.fetched_at.desc())
+        .limit(limit)
+    )
+    return list(session.scalars(stmt))
 
 
-def list_jobs_without_embedding(engine: Engine, limit: int = 100) -> list[tuple[RawJob, JobRequirements | None]]:
-    sql = text("""
-        SELECT id, source, url, title, company, raw_text, posted_at, country, remote, requirements
-        FROM jobs
-        WHERE embedding IS NULL
-        ORDER BY fetched_at DESC
-        LIMIT :n
-    """)
-    out = []
-    with engine.connect() as conn:
-        rows = conn.execute(sql, {"n": limit}).mappings().all()
-    for r in rows:
-        d = dict(r)
-        req_raw = d.pop("requirements", None)
-        req = JobRequirements.model_validate(req_raw) if req_raw else None
-        out.append((RawJob.model_validate(d), req))
-    return out
+def list_jobs_without_embedding(session: Session, limit: int = 100) -> list[Job]:
+    stmt = (
+        select(Job)
+        .where(Job.embedding.is_(None))
+        .order_by(Job.fetched_at.desc())
+        .limit(limit)
+    )
+    return list(session.scalars(stmt))
 
 
-def get_job_with_requirements(engine: Engine, job_id: str) -> tuple[RawJob, JobRequirements | None]:
-    sql = text("SELECT * FROM jobs WHERE id = :id")
-    with engine.connect() as conn:
-        row = conn.execute(sql, {"id": job_id}).mappings().one()
-    d = dict(row)
-    req_raw = d.pop("requirements", None)
-    req = JobRequirements.model_validate(req_raw) if req_raw else None
-    return RawJob.model_validate(d), req
+def get_job(session: Session, job_id: str) -> Job | None:
+    return session.get(Job, job_id)
 
 
 # ---------- Profiles ----------
 
-def upsert_profile(engine: Engine, profile_id: str, form_data: dict) -> None:
-    sql = text("""
-        INSERT INTO profiles (id, form_data) VALUES (:id, CAST(:f AS jsonb))
-        ON CONFLICT (id) DO UPDATE
-        SET form_data = EXCLUDED.form_data, updated_at = now()
-    """)
-    with engine.begin() as conn:
-        conn.execute(sql, {"id": profile_id, "f": json.dumps(form_data)})
+def upsert_profile(session: Session, profile_id: str, form_data: dict) -> None:
+    stmt = pg_insert(Profile).values(id=profile_id, form_data=form_data)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["id"],
+        set_={"form_data": stmt.excluded.form_data},
+    )
+    session.execute(stmt)
 
 
-def upsert_profile_embedding(engine: Engine, profile_id: str, vec: np.ndarray) -> None:
-    with engine.begin() as conn:
-        conn.execute(
-            text("UPDATE profiles SET embedding = CAST(:v AS vector) WHERE id = :id"),
-            {"v": vec.tolist(), "id": profile_id},
-        )
+def upsert_profile_embedding(session: Session, profile_id: str, vec: np.ndarray) -> None:
+    profile = session.get(Profile, profile_id)
+    if profile is None:
+        raise LookupError(f"Profile {profile_id} not found")
+    profile.embedding = vec.tolist()
 
 
 # ---------- Matches ----------
 
 def upsert_match(
-    engine: Engine,
+    session: Session,
     *,
     profile_id: str,
     job_id: str,
@@ -445,38 +432,49 @@ def upsert_match(
     llm_score: int,
     verdict: Verdict,
 ) -> None:
-    sql = text("""
-        INSERT INTO matches (profile_id, job_id, semantic_score, llm_score, verdict)
-        VALUES (:p, :j, :s, :l, CAST(:v AS jsonb))
-        ON CONFLICT (profile_id, job_id) DO UPDATE SET
-            semantic_score = EXCLUDED.semantic_score,
-            llm_score      = EXCLUDED.llm_score,
-            verdict        = EXCLUDED.verdict,
-            scored_at      = now()
-    """)
-    with engine.begin() as conn:
-        conn.execute(sql, {
-            "p": profile_id, "j": job_id,
-            "s": semantic_score, "l": llm_score,
-            "v": verdict.model_dump_json(),
-        })
+    stmt = pg_insert(Match).values(
+        profile_id=profile_id,
+        job_id=job_id,
+        semantic_score=semantic_score,
+        llm_score=llm_score,
+        verdict=verdict.model_dump(mode="json"),
+    )
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["profile_id", "job_id"],
+        set_={
+            "semantic_score": stmt.excluded.semantic_score,
+            "llm_score": stmt.excluded.llm_score,
+            "verdict": stmt.excluded.verdict,
+            "scored_at": func.now(),
+        },
+    )
+    session.execute(stmt)
 
 
-def top_matches_for_profile(engine: Engine, profile_id: str, limit: int = 20) -> list[dict]:
-    """Lista de matches con metadatos del job para mostrar en /matches (fase 4)."""
-    sql = text("""
-        SELECT m.job_id, m.semantic_score, m.llm_score, m.verdict,
-               j.title, j.company, j.url, j.source
-        FROM matches m
-        JOIN jobs j ON j.id = m.job_id
-        WHERE m.profile_id = :p
-        ORDER BY m.llm_score DESC
-        LIMIT :n
-    """)
-    with engine.connect() as conn:
-        rows = conn.execute(sql, {"p": profile_id, "n": limit}).mappings().all()
-    return [dict(r) for r in rows]
+def top_matches_for_profile(
+    session: Session, profile_id: str, limit: int = 20
+) -> list[tuple[Match, Job]]:
+    """Matches + Job adjunto para mostrar en /matches (fase 4).
+
+    Devuelve tuplas (Match, Job) — el ORM ya tiene la relación cargada via
+    `Match.job` (`back_populates="matches"`), pero hacemos el join explícito
+    aquí para que sea una sola query con eager loading.
+    """
+    stmt = (
+        select(Match, Job)
+        .join(Job, Match.job_id == Job.id)
+        .where(Match.profile_id == profile_id)
+        .order_by(Match.llm_score.desc())
+        .limit(limit)
+    )
+    return [(m, j) for m, j in session.execute(stmt).all()]
 ```
+
+**Notas:**
+- `pg_insert(...).on_conflict_do_update(...)` es el equivalente ORM-friendly del `INSERT ... ON CONFLICT DO UPDATE` de Postgres. Mantiene la idempotencia sin perder los `Mapped[]` ni los validadores Pydantic externos.
+- `session.get(Job, id)` aprovecha el identity map de SQLAlchemy y evita un round-trip si el objeto ya está en la sesión.
+- Para los embeddings, no hace falta `CAST(... AS vector)`: la columna `Vector(384)` ya tipea la asignación. Pasamos `vec.tolist()` (list de floats).
+- `func.now()` es el helper de `sqlalchemy.sql.func`, equivalente a `NOW()`. Recordar `from sqlalchemy.sql import func` al usarlo.
 
 ---
 
@@ -547,7 +545,7 @@ def _fake_profile() -> ProfileForm:
     })
 ```
 
-Para tests de storage: usar `testcontainers-python` con `pgvector/pgvector:pg16`, ejecutar `init.sql` (de fase 5) en el setup, y ejecutar las funciones reales.
+Para tests de storage: usar `testcontainers-python` con `pgvector/pgvector:pg16`, correr `alembic upgrade head` en el setup, y ejecutar las funciones reales.
 
 ---
 

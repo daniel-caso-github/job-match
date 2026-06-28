@@ -1,0 +1,14 @@
+Platform Engineer
+Beta GmbH — Berlin (Hybrid)
+
+We are hiring a Platform Engineer to scale our Kubernetes infrastructure.
+
+What you bring
+- Strong experience with Kubernetes and Terraform
+- Familiarity with Go or Rust
+- Experience with observability stacks (Prometheus, Grafana)
+
+Important
+- You must reside in the EU or have valid EU work authorization.
+  We do not sponsor visas for this role.
+- This is a hybrid position based in Berlin (3 days/week in office).
