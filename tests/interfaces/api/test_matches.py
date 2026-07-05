@@ -6,7 +6,9 @@ from fastapi.testclient import TestClient
 
 from src.domain.entities.job import Job
 from src.domain.entities.match import Match
-from tests.interfaces.api.conftest import ApiContext
+from src.domain.value_objects.job_requirements import EnglishLevel, Seniority
+from src.domain.value_objects.match_filters import MatchFilters
+from tests.interfaces.api.conftest import FAKE_PROFILE_ID, ApiContext
 
 
 def _job(job_id: str = "j1") -> Job:
@@ -27,7 +29,7 @@ def _job(job_id: str = "j1") -> Job:
     )
 
 
-def _match(profile_id: str = "p1", job_id: str = "j1", llm_score: int = 88) -> Match:
+def _match(profile_id: str = FAKE_PROFILE_ID, job_id: str = "j1", llm_score: int = 88) -> Match:
     return Match(
         profile_id=profile_id,
         job_id=job_id,
@@ -46,11 +48,11 @@ def test_list_matches_returns_payload_with_attribution(
         (_match(job_id="j2", llm_score=70), _job("j2")),
     ]
 
-    r = client.get("/matches", params={"profile_id": "p1"})
+    r = client.get("/matches")
 
     assert r.status_code == 200
     body = r.json()
-    assert body["profile_id"] == "p1"
+    assert body["profile_id"] == FAKE_PROFILE_ID
     assert body["count"] == 2
     assert "Himalayas" in body["source_attribution"]
     assert "Remotive" in body["source_attribution"]
@@ -66,28 +68,92 @@ def test_list_matches_returns_payload_with_attribution(
 def test_list_matches_passes_limit_to_repo(client: TestClient, api: ApiContext):
     api.matches.top_response = []
 
-    r = client.get("/matches", params={"profile_id": "p1", "limit": 5})
+    r = client.get("/matches", params={"limit": 5})
 
     assert r.status_code == 200
-    assert api.matches.top_calls == [("p1", 5)]
+    assert api.matches.top_calls == [(FAKE_PROFILE_ID, 5, MatchFilters())]
+
+
+def test_list_matches_defaults_to_empty_filters(client: TestClient, api: ApiContext):
+    api.matches.top_response = []
+
+    r = client.get("/matches")
+
+    assert r.status_code == 200
+    _, _, filters = api.matches.top_calls[0]
+    assert filters == MatchFilters()
+
+
+def test_list_matches_builds_filters_from_query_params(
+    client: TestClient, api: ApiContext
+):
+    api.matches.top_response = []
+
+    r = client.get(
+        "/matches",
+        params=[
+            ("min_score", "70"),
+            ("source", "himalayas"),
+            ("stack", "python"),
+            ("stack", "fastapi"),
+            ("seniority", "senior"),
+            ("seniority", "staff"),
+            ("remote_only", "true"),
+            ("latam_only", "true"),
+            ("exclude_eu", "true"),
+            ("with_salary", "true"),
+        ],
+    )
+
+    assert r.status_code == 200
+    _, _, filters = api.matches.top_calls[0]
+    assert filters == MatchFilters(
+        min_score=70,
+        sources=["himalayas"],
+        stack=["python", "fastapi"],
+        seniorities=[Seniority.senior, Seniority.staff],
+        remote_only=True,
+        latam_only=True,
+        exclude_eu=True,
+        with_salary=True,
+    )
+
+
+def test_list_matches_expands_english_max(client: TestClient, api: ApiContext):
+    api.matches.top_response = []
+
+    r = client.get("/matches", params={"english_max": "B2"})
+
+    assert r.status_code == 200
+    _, _, filters = api.matches.top_calls[0]
+    assert filters.english_levels == [
+        EnglishLevel.a1,
+        EnglishLevel.a2,
+        EnglishLevel.b1,
+        EnglishLevel.b2,
+    ]
+
+
+def test_list_matches_rejects_invalid_filter_values(
+    client: TestClient, api: ApiContext
+):
+    r_score = client.get("/matches", params={"min_score": 150})
+    r_seniority = client.get("/matches", params={"seniority": "principal"})
+    assert r_score.status_code == 422
+    assert r_seniority.status_code == 422
 
 
 def test_list_matches_rejects_invalid_limit(client: TestClient, api: ApiContext):
-    r_low = client.get("/matches", params={"profile_id": "p1", "limit": 0})
-    r_high = client.get("/matches", params={"profile_id": "p1", "limit": 200})
+    r_low = client.get("/matches", params={"limit": 0})
+    r_high = client.get("/matches", params={"limit": 200})
     assert r_low.status_code == 422
     assert r_high.status_code == 422
-
-
-def test_list_matches_requires_profile_id(client: TestClient, api: ApiContext):
-    r = client.get("/matches")
-    assert r.status_code == 422
 
 
 def test_match_detail_returns_full_payload(client: TestClient, api: ApiContext):
     api.matches.pair_response = (_match(llm_score=92), _job("j1"))
 
-    r = client.get("/matches/j1", params={"profile_id": "p1"})
+    r = client.get("/matches/j1")
 
     assert r.status_code == 200
     body = r.json()
@@ -97,13 +163,13 @@ def test_match_detail_returns_full_payload(client: TestClient, api: ApiContext):
     assert body["requirements"]["stack"] == ["python", "fastapi"]
     assert body["raw_text"] == "...full description..."
     assert body["scored_at"].startswith("2026-06-28")
-    assert api.matches.pair_calls == [("p1", "j1")]
+    assert api.matches.pair_calls == [(FAKE_PROFILE_ID, "j1")]
 
 
 def test_match_detail_returns_404_when_missing(client: TestClient, api: ApiContext):
     api.matches.pair_response = None
 
-    r = client.get("/matches/nope", params={"profile_id": "p1"})
+    r = client.get("/matches/nope")
 
     assert r.status_code == 404
     assert r.json()["detail"] == "match not found"

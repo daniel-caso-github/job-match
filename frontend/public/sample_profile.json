@@ -1,0 +1,22 @@
+{
+  "id": "daniel-2026",
+  "stack": [
+    { "name": "python", "years": 6 },
+    { "name": "fastapi", "years": 3 },
+    { "name": "postgresql", "years": 5 },
+    { "name": "docker", "years": 4 },
+    { "name": "aws", "years": 4 },
+    { "name": "sqlalchemy", "years": 3 },
+    { "name": "airflow", "years": 2 },
+    { "name": "pydantic", "years": 3 },
+    { "name": "react", "years": 2 },
+    { "name": "typescript", "years": 2 }
+  ],
+  "seniority": "senior",
+  "english_level": "C1",
+  "location": "AR",
+  "willing_to_relocate": false,
+  "modality": "remote",
+  "salary_expectation": "USD 4000-6000/mes",
+  "summary": "Backend engineer con 6 años en Python. Especializado en APIs REST con FastAPI, pipelines de datos con Airflow y modelado relacional con SQLAlchemy + Postgres. Experiencia desplegando en AWS (ECS, RDS, S3, Lambda). Últimamente trabajando en proyectos que combinan LLMs (Gemini, OpenAI) con validación estructurada via Pydantic y búsqueda vectorial con pgvector. Metodología: Clean Architecture, TDD, Docker-only desde dev hasta prod. Busco rol remoto de backend/data engineering en equipo chico con autonomía técnica."
+}

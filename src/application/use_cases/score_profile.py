@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+from src.domain.entities.job import Job
 from src.domain.ports.embedder import Embedder
 from src.domain.ports.job_repository import JobRepository
 from src.domain.ports.llm_scorer import LlmScorer
@@ -9,6 +10,7 @@ from src.domain.ports.match_repository import MatchRepository
 from src.domain.ports.profile_repository import ProfileRepository
 from src.domain.services.embedding_text import profile_text_for_embedding
 from src.domain.value_objects.profile_form import ProfileForm
+from src.domain.value_objects.verdict import Verdict
 from src.infrastructure.config import settings
 
 logger = logging.getLogger(__name__)
@@ -52,15 +54,15 @@ class ScoreProfileUseCase:
         k = top_k if top_k is not None else settings.top_k_for_llm
         t = threshold if threshold is not None else settings.semantic_threshold
 
-        self._profile_repository.upsert(form.id, form.model_dump(mode="json"))
+        profile_id = self._profile_repository.upsert(form)
         profile_vec = self._embedder.embed([profile_text_for_embedding(form)])[0]
-        self._profile_repository.update_embedding(form.id, profile_vec)
+        self._profile_repository.update_embedding(profile_id, profile_vec)
 
         top = self._job_repository.semantic_top_k(
-            profile_vec, k=k, threshold=t, exclude_scored_for=form.id
+            profile_vec, k=k, threshold=t, exclude_scored_for=profile_id
         )
         if not top:
-            logger.info("No jobs above threshold for profile %s", form.id)
+            logger.info("No jobs above threshold for profile %s", form.username)
             return 0
 
         scored = 0
@@ -69,9 +71,10 @@ class ScoreProfileUseCase:
             if job is None or job.requirements is None:
                 # Defensa: el filtro del repo ya excluye estos, pero por si acaso.
                 continue
-            verdict = self._llm_scorer.score(form, job.requirements)
+            verdict = self._llm_scorer.score(form, job)
+            verdict = _apply_non_tech_guardrail(verdict, profile=form, job=job)
             self._match_repository.upsert(
-                profile_id=form.id,
+                profile_id=profile_id,
                 job_id=job_id,
                 semantic_score=semantic_score,
                 llm_score=verdict.score,
@@ -79,5 +82,23 @@ class ScoreProfileUseCase:
             )
             scored += 1
 
-        logger.info("Scored %d matches for profile %s", scored, form.id)
+        logger.info("Scored %d matches for profile %s", scored, form.username)
         return scored
+
+
+def _apply_non_tech_guardrail(
+    verdict: Verdict, *, profile: ProfileForm, job: Job
+) -> Verdict:
+    reqs = job.requirements
+    if reqs is None or reqs.stack or not profile.stack:
+        return verdict
+
+    profile_techs = {t.name.lower() for t in profile.stack}
+    filtered_strengths = [
+        s for s in verdict.strengths
+        if not any(tech in s.lower() for tech in profile_techs)
+    ]
+    return verdict.model_copy(update={
+        "score": min(verdict.score, 30),
+        "strengths": filtered_strengths,
+    })

@@ -80,16 +80,20 @@ def main() -> None:
         )
         n = use_case.execute(form, top_k=args.top_k, threshold=args.threshold)
 
-    print(f"scored {n} matches for profile {form.id!r}", file=sys.stderr)
+    print(f"scored {n} matches for profile {form.username!r}", file=sys.stderr)
 
     if args.print_top > 0:
-        _print_top(form.id, args.print_top)
+        _print_top(form.username, args.print_top)
 
 
-def _print_top(profile_id: str, n: int) -> None:
+def _print_top(username: str, n: int) -> None:
     with session_scope() as session:
+        profile = SqlAlchemyProfileRepository(session).get_by_username(username)
+        if profile is None:
+            print(f"profile {username!r} not found", file=sys.stderr)
+            return
         repo = SqlAlchemyMatchRepository(session)
-        rows = repo.top_for_profile(profile_id, limit=n)
+        rows = repo.top_for_profile(profile.id, limit=n)
 
     for match, job in rows:
         print(

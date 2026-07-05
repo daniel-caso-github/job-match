@@ -15,8 +15,15 @@ from src.domain.entities.job import Job
 from src.domain.entities.match import Match
 from src.domain.entities.profile import Profile
 from src.domain.entities.raw_job import RawJob
+from src.domain.entities.saved_search import SavedSearch
 from src.domain.value_objects.job_requirements import JobRequirements
-from src.infrastructure.persistence.orm_models import JobModel, MatchModel, ProfileModel
+from src.domain.value_objects.profile_form import ProfileForm, TechItem
+from src.infrastructure.persistence.orm_models import (
+    JobModel,
+    MatchModel,
+    ProfileModel,
+    SavedSearchModel,
+)
 
 
 def raw_job_to_orm_payload(raw_job: RawJob) -> dict[str, Any]:
@@ -45,11 +52,39 @@ def job_model_to_domain(m: JobModel) -> Job:
 
 
 def profile_model_to_domain(m: ProfileModel) -> Profile:
+    form = ProfileForm(
+        username=m.username,
+        first_name=m.first_name,
+        last_name=m.last_name,
+        email=m.email,
+        stack=[TechItem(name=ps.skill.name, years=ps.years) for ps in m.skills],
+        seniority=m.seniority,
+        english_level=m.english_level,
+        location=m.location,
+        willing_to_relocate=m.willing_to_relocate,
+        modality=m.modality,
+        salary_min=m.salary_min,
+        salary_max=m.salary_max,
+        salary_currency=m.salary_currency or "USD",
+        summary=m.summary,
+    )
     return Profile(
         id=m.id,
-        form_data=dict(m.form_data),
+        form=form,
         embedding=list(m.embedding) if m.embedding is not None else None,
         updated_at=m.updated_at,
+        password_hash=m.password_hash,
+    )
+
+
+def saved_search_model_to_domain(m: SavedSearchModel) -> SavedSearch:
+    return SavedSearch(
+        dag_run_id=m.dag_run_id,
+        profile_id=m.profile_id,
+        filters=dict(m.filters),
+        run_at=m.run_at,
+        created_at=m.created_at,
+        match_count=m.match_count,
     )
 
 

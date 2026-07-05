@@ -69,9 +69,15 @@ class GeminiExtractor(RequirementsExtractor):
     def extract(self, raw_text: str) -> JobRequirements:
         text = raw_text[: self._max_input_chars]
         prompt = EXTRACTION_PROMPT.format(raw_text=text)
+        logger.info("Extrayendo requisitos con Gemini (%d chars)", len(text))
 
         try:
-            return self._call_and_validate(prompt)
+            result = self._call_and_validate(prompt)
+            logger.info(
+                "Extracción OK — stack=%s seniority=%s confidence=%.2f",
+                result.stack, result.seniority, result.confidence,
+            )
+            return result
         except (ValidationError, json.JSONDecodeError) as e:
             logger.info("Extraction validation failed on attempt 1: %s. Retrying.", e)
             repair_prompt = (
@@ -79,7 +85,9 @@ class GeminiExtractor(RequirementsExtractor):
                 "Return a corrected JSON object."
             )
             try:
-                return self._call_and_validate(repair_prompt)
+                result = self._call_and_validate(repair_prompt)
+                logger.info("Extracción OK tras retry — confidence=%.2f", result.confidence)
+                return result
             except (ValidationError, json.JSONDecodeError) as e2:
                 logger.warning("Extraction failed after retry: %s. Returning empty.", e2)
                 return JobRequirements(confidence=0.0)

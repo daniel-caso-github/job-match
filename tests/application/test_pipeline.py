@@ -58,27 +58,10 @@ def test_run_embed_forwards_limit():
         MockUC.return_value.execute.assert_called_once_with(limit=100)
 
 
-def test_run_score_all_profiles_skips_invalid_form():
-    session = MagicMock()
-    bad_profile = MagicMock()
-
-    with (
-        patch(f"{MODULE}.session_scope", return_value=_mock_cm(session)),
-        patch(f"{MODULE}.SqlAlchemyProfileRepository") as MockRepo,
-        patch(f"{MODULE}.ProfileForm") as MockForm,
-    ):
-        MockRepo.return_value.list_all.return_value = [bad_profile]
-        MockForm.model_validate.side_effect = ValueError("missing fields")
-        from src.interfaces.pipeline import run_score_all_profiles
-
-        assert run_score_all_profiles() == {}
-
-
 def test_run_score_all_profiles_returns_counts_per_profile():
     session = MagicMock()
     profile = MagicMock()
-    mock_form = MagicMock()
-    mock_form.id = "profile-1"
+    profile.form.username = "profile-1"
 
     with (
         patch(f"{MODULE}.session_scope", return_value=_mock_cm(session)),
@@ -86,12 +69,10 @@ def test_run_score_all_profiles_returns_counts_per_profile():
         patch(f"{MODULE}.SqlAlchemyJobRepository"),
         patch(f"{MODULE}.SqlAlchemyMatchRepository"),
         patch(f"{MODULE}.ScoreProfileUseCase") as MockUC,
-        patch(f"{MODULE}.ProfileForm") as MockForm,
         patch(f"{MODULE}._embedder_singleton"),
         patch(f"{MODULE}.GeminiScorer"),
     ):
         MockProfRepo.return_value.list_all.return_value = [profile]
-        MockForm.model_validate.return_value = mock_form
         MockUC.return_value.execute.return_value = 5
         from src.interfaces.pipeline import run_score_all_profiles
 

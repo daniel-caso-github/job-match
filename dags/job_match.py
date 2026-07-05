@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta
 
+import requests
 from airflow.decorators import dag, task
+
+PIPELINE_API_URL = os.getenv("PIPELINE_API_URL", "http://api:8000")
+TIMEOUT = 1800  # 30 min por tarea
 
 DEFAULT_ARGS = {
     "owner": "danielcaso",
@@ -27,28 +32,42 @@ def job_match():
 
     @task
     def recolectar() -> int:
-        from src.interfaces.pipeline import run_collect
-        return run_collect()
+        r = requests.post(f"{PIPELINE_API_URL}/jobs/collect", timeout=TIMEOUT)
+        r.raise_for_status()
+        return r.json()["collected"]
 
     @task
     def extraer_requisitos(_collected: int) -> int:
-        from src.interfaces.pipeline import run_extract
-        return run_extract(limit=200)
+        r = requests.post(f"{PIPELINE_API_URL}/jobs/extract", params={"limit": 200}, timeout=TIMEOUT)
+        r.raise_for_status()
+        return r.json()["extracted"]
 
     @task
     def embeddings(_extracted: int) -> int:
-        from src.interfaces.pipeline import run_embed
-        return run_embed(limit=200)
+        r = requests.post(f"{PIPELINE_API_URL}/jobs/embed", params={"limit": 200}, timeout=TIMEOUT)
+        r.raise_for_status()
+        return r.json()["embedded"]
 
     @task
     def score_perfiles(_embedded: int) -> dict:
-        from src.interfaces.pipeline import run_score_all_profiles
-        return run_score_all_profiles()
+        r = requests.post(f"{PIPELINE_API_URL}/jobs/score", timeout=TIMEOUT)
+        r.raise_for_status()
+        return r.json()["scored"]
+
+    @task
+    def registrar_conteo(_scored) -> None:
+        from airflow.operators.python import get_current_context
+        run_id = get_current_context()["dag_run"].run_id
+        r = requests.post(
+            f"{PIPELINE_API_URL}/jobs/searches/{run_id}/match-count", timeout=TIMEOUT
+        )
+        r.raise_for_status()
 
     n_collected = recolectar()
     n_extracted = extraer_requisitos(n_collected)
     n_embedded = embeddings(n_extracted)
-    score_perfiles(n_embedded)
+    scores = score_perfiles(n_embedded)
+    registrar_conteo(scores)
 
 
 dag = job_match()

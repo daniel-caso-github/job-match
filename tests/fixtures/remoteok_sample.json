@@ -1,0 +1,41 @@
+[
+  {
+    "legal": "API Terms of Service: link back with follow to remoteok.com and mention Remote OK as source."
+  },
+  {
+    "slug": "python-engineer-acme-10001",
+    "id": "10001",
+    "epoch": 1751356800,
+    "date": "2026-07-01T10:00:00+00:00",
+    "company": "Acme Corp",
+    "position": "Senior Python Engineer",
+    "tags": ["python", "fastapi", "remote"],
+    "description": "<p>Python <strong>FastAPI</strong> engineer. <ul><li>LATAM friendly</li></ul></p>",
+    "location": "Worldwide",
+    "url": "https://remoteok.com/remote-jobs/10001"
+  },
+  {
+    "slug": "backend-no-company-10002",
+    "id": "10002",
+    "epoch": 1751270400,
+    "date": "2026-06-30T10:00:00+00:00",
+    "company": "",
+    "position": "Backend Developer",
+    "tags": ["go"],
+    "description": "Go backend role, plain text.",
+    "location": null,
+    "url": "https://remoteok.com/remote-jobs/10002"
+  },
+  {
+    "slug": "devops-engineer-beta-10003",
+    "id": "10003",
+    "epoch": null,
+    "date": "not-a-valid-date",
+    "company": "Beta Inc",
+    "position": "DevOps Engineer",
+    "tags": ["kubernetes", "terraform"],
+    "description": "<div>Kubernetes &amp; Terraform role.</div>",
+    "location": "EMEA",
+    "url": "https://remoteok.com/remote-jobs/10003"
+  }
+]

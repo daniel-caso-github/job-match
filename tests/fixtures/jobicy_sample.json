@@ -1,0 +1,45 @@
+{
+  "apiVersion": "2.2.14",
+  "jobCount": 3,
+  "jobs": [
+    {
+      "id": 10001,
+      "url": "https://jobicy.com/jobs/10001-senior-python-engineer",
+      "jobTitle": "Senior Python Engineer",
+      "companyName": "Acme Corp",
+      "jobIndustry": ["Software Engineering"],
+      "jobType": ["Full-Time"],
+      "jobGeo": "Worldwide",
+      "jobLevel": "Senior",
+      "jobExcerpt": "We need a senior Python engineer with FastAPI experience.",
+      "jobDescription": "<p>Python <strong>FastAPI</strong> developer. <ul><li>Remote LATAM-friendly</li></ul></p>",
+      "pubDate": "2026-07-01T10:00:00+00:00"
+    },
+    {
+      "id": 10002,
+      "url": "https://jobicy.com/jobs/10002-backend-developer",
+      "jobTitle": "Backend Developer",
+      "companyName": null,
+      "jobIndustry": ["Software Engineering"],
+      "jobType": ["Contract"],
+      "jobGeo": "USA",
+      "jobLevel": "Midweight",
+      "jobExcerpt": "",
+      "jobDescription": "<p>Go backend developer role.</p>",
+      "pubDate": "not-a-valid-date"
+    },
+    {
+      "id": 10003,
+      "url": "https://jobicy.com/jobs/10003-devops-engineer",
+      "jobTitle": "DevOps Engineer",
+      "companyName": "Beta Inc",
+      "jobIndustry": ["DevOps"],
+      "jobType": ["Full-Time"],
+      "jobGeo": "EMEA",
+      "jobLevel": "Midweight",
+      "jobExcerpt": "Kubernetes and Terraform expert.",
+      "jobDescription": "<div>Kubernetes &amp; Terraform role.</div>",
+      "pubDate": "2026-06-30T08:00:00+00:00"
+    }
+  ]
+}

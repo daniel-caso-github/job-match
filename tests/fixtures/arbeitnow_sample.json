@@ -1,0 +1,44 @@
+{
+  "data": [
+    {
+      "slug": "senior-python-engineer-acme-10001",
+      "company_name": "Acme Corp",
+      "title": "Senior Python Engineer",
+      "description": "<p>Python <strong>FastAPI</strong> developer. <ul><li>Remote LATAM OK</li></ul></p>",
+      "remote": true,
+      "url": "https://www.arbeitnow.com/jobs/acme-corp/senior-python-engineer-10001",
+      "tags": ["python", "fastapi"],
+      "location": "Remote",
+      "created_at": 1751356800
+    },
+    {
+      "slug": "backend-developer-nocompany-10002",
+      "company_name": null,
+      "title": "Backend Developer",
+      "description": "Go backend developer, plain text.",
+      "remote": false,
+      "url": "https://www.arbeitnow.com/jobs/nocompany/backend-developer-10002",
+      "tags": ["go"],
+      "location": "Berlin, Germany",
+      "created_at": "not-a-timestamp"
+    },
+    {
+      "slug": "devops-engineer-beta-10003",
+      "company_name": "Beta Inc",
+      "title": "DevOps Engineer",
+      "description": "<div>Kubernetes &amp; Terraform role.</div>",
+      "remote": true,
+      "url": "https://www.arbeitnow.com/jobs/beta-inc/devops-engineer-10003",
+      "tags": ["kubernetes", "terraform"],
+      "location": "Munich, Germany",
+      "created_at": 1751270400
+    }
+  ],
+  "links": {
+    "first": "https://www.arbeitnow.com/api/job-board-api?page=1",
+    "last": "https://www.arbeitnow.com/api/job-board-api?page=1",
+    "prev": null,
+    "next": null
+  },
+  "meta": {"current_page": 1, "last_page": 1, "per_page": 3, "total": 3}
+}

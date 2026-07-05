@@ -1,0 +1,35 @@
+{
+  "totalCount": 3,
+  "jobs": [
+    {
+      "title": "Senior Python Engineer",
+      "link": "https://jooble.org/desc/10001",
+      "snippet": "<p>Python <strong>FastAPI</strong> developer. <ul><li>Remote OK</li></ul></p>",
+      "salary": "$90k - $130k",
+      "location": "Worldwide",
+      "company": "Acme Corp",
+      "updated": "2026-07-01T10:00:00+00:00",
+      "type": "Full-time"
+    },
+    {
+      "title": "Backend Developer",
+      "link": "https://jooble.org/desc/10002",
+      "snippet": "Go backend role, plain text.",
+      "salary": "",
+      "location": "USA",
+      "company": null,
+      "updated": "not-a-valid-date",
+      "type": "Contract"
+    },
+    {
+      "title": "DevOps Engineer",
+      "link": "https://jooble.org/desc/10003",
+      "snippet": "<div>Kubernetes &amp; Terraform role.</div>",
+      "salary": null,
+      "location": "EMEA",
+      "company": "Beta Inc",
+      "updated": "2026-06-30T08:00:00+00:00",
+      "type": "Full-time"
+    }
+  ]
+}

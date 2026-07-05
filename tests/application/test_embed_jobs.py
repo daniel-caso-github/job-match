@@ -53,6 +53,9 @@ class _FakeJobRepo(JobRepository):
     def update_embedding(self, job_id: str, vec: list[float]) -> None:
         self.embedding_updates.append((job_id, vec))
 
+    def list_stack_technologies(self, limit: int = 30) -> list[str]:
+        return []
+
     def semantic_top_k(
         self,
         embedding: list[float],

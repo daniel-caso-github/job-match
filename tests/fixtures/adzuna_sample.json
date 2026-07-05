@@ -1,0 +1,41 @@
+{
+  "results": [
+    {
+      "id": "10001",
+      "title": "Senior Python Engineer",
+      "description": "Python FastAPI developer needed. Remote friendly.",
+      "redirect_url": "https://www.adzuna.com/details/10001",
+      "company": {"display_name": "Acme Corp"},
+      "location": {"display_name": "London, UK"},
+      "created": "2026-07-01T10:00:00Z",
+      "salary_min": 80000.0,
+      "salary_max": 120000.0,
+      "category": {"label": "IT Jobs"}
+    },
+    {
+      "id": "10002",
+      "title": "Backend Developer",
+      "description": "Go backend developer role.",
+      "redirect_url": "https://www.adzuna.com/details/10002",
+      "company": null,
+      "location": {"display_name": "Madrid, Spain"},
+      "created": "not-a-valid-date",
+      "salary_min": null,
+      "salary_max": null,
+      "category": {"label": "IT Jobs"}
+    },
+    {
+      "id": "10003",
+      "title": "Remote DevOps Engineer",
+      "description": "Remote Kubernetes and Terraform role.",
+      "redirect_url": "https://www.adzuna.com/details/10003",
+      "company": {"display_name": "Beta Inc"},
+      "location": {"display_name": "Barcelona, Spain"},
+      "created": "2026-06-30T08:00:00Z",
+      "salary_min": 60000.0,
+      "salary_max": null,
+      "category": {"label": "IT Jobs"}
+    }
+  ],
+  "count": 3
+}

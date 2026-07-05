@@ -55,7 +55,7 @@ def test_job_text_handles_missing_company():
 
 def test_profile_text_basic():
     form = ProfileForm(
-        id="d",
+        username="d",
         stack=[TechItem(name="Python", years=8), TechItem(name="FastAPI", years=3)],
         seniority=Seniority.senior,
         english_level=EnglishLevel.b2,
@@ -63,8 +63,8 @@ def test_profile_text_basic():
         summary="Backend engineer focused on APIs.",
     )
     text = profile_text_for_embedding(form)
-    assert "Python (8y)" in text
-    assert "FastAPI (3y)" in text
+    assert "python (8y)" in text
+    assert "fastapi (3y)" in text
     assert "Seniority: senior" in text
     assert "English: B2" in text
     assert "Location: AR" in text
@@ -74,7 +74,7 @@ def test_profile_text_basic():
 
 def test_profile_text_without_summary_or_stack():
     form = ProfileForm(
-        id="d",
+        username="d",
         stack=[],
         seniority=Seniority.junior,
         english_level=EnglishLevel.a2,

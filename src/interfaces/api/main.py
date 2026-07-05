@@ -1,18 +1,23 @@
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.interfaces.api.dependencies import _embedder_singleton
-from src.interfaces.api.routers import health, jobs, matches, profile
+from src.interfaces.api.routers import auth, health, jobs, matches, profile
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Precarga el embedder (sentence-transformers) para evitar el cold-start
-    # en la primera request que dispare scoring.
     _embedder_singleton()
     yield
 
@@ -27,8 +32,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS abierto: la API se bindea a 127.0.0.1, sin auth, uso personal.
-# Si en algún momento se publica, restringir orígenes.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -37,6 +40,9 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(auth.router)
 app.include_router(matches.router)
 app.include_router(profile.router)
 app.include_router(jobs.router)
+
+Instrumentator().instrument(app).expose(app)

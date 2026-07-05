@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0b0d; --panel:#101114; --panel2:#17191e; --border:#1e2025; --border2:#26282e; --border3:#2a2d36; --hair:#1a1c21;
+    --head-bg:rgba(10,11,13,0.82); --head-border:#1c1e24;
+    --text:#e6e7ea; --text2:#c9ccd3; --sub:#9ba1ab; --muted:#6b7280;
+    --accent:#818cf8; --accent-text:#c7d2fe; --accent-ink:#0a0b0d; --accent-bg:rgba(129,140,248,0.10); --accent-border:rgba(129,140,248,0.28);
+    --chip-bg:rgba(255,255,255,0.04);
+    --sc-green-fg:#34d399; --sc-green-bg:rgba(52,211,153,0.10); --sc-green-border:rgba(52,211,153,0.28);
+    --sc-amber-fg:#fbbf24; --sc-amber-bg:rgba(251,191,36,0.10); --sc-amber-border:rgba(251,191,36,0.28);
+    --sc-red-fg:#f87171; --sc-red-bg:rgba(248,113,113,0.10); --sc-red-border:rgba(248,113,113,0.28);
+    --sc-null-fg:#8b90a0; --sc-null-bg:rgba(139,144,160,0.06); --sc-null-border:#26282e;
+    --pos:#34d399; --pos-bg:rgba(52,211,153,0.08); --pos-border:rgba(52,211,153,0.28);
+    --neg:#f87171; --neg-bg:rgba(248,113,113,0.10); --neg-border:rgba(248,113,113,0.30);
+    --warn:#fcd34d; --warn-bg:rgba(251,191,36,0.08); --warn-border:rgba(251,191,36,0.25);
+    --src-him-dot:#818cf8; --src-him-text:#c7d2fe; --src-rem-dot:#2dd4bf; --src-rem-text:#99f6e4;
+  }
+  :root[data-om-theme="light"]{
+    --bg:#f6f7f9; --panel:#ffffff; --panel2:#f1f3f6; --border:#e7e9ee; --border2:#dde0e6; --border3:#cfd3db; --hair:#eef0f3;
+    --head-bg:rgba(246,247,249,0.85); --head-border:#e7e9ee;
+    --text:#14161b; --text2:#3a4150; --sub:#5c6472; --muted:#8b91a0;
+    --accent:#6366f1; --accent-text:#4f46e5; --accent-ink:#ffffff; --accent-bg:rgba(99,102,241,0.08); --accent-border:rgba(99,102,241,0.25);
+    --chip-bg:rgba(0,0,0,0.03);
+    --sc-green-fg:#059669; --sc-green-bg:rgba(5,150,105,0.10); --sc-green-border:rgba(5,150,105,0.28);
+    --sc-amber-fg:#b45309; --sc-amber-bg:rgba(180,83,9,0.10); --sc-amber-border:rgba(180,83,9,0.28);
+    --sc-red-fg:#dc2626; --sc-red-bg:rgba(220,38,38,0.10); --sc-red-border:rgba(220,38,38,0.28);
+    --sc-null-fg:#8b90a0; --sc-null-bg:rgba(139,144,160,0.06); --sc-null-border:#dde0e6;
+    --pos:#059669; --pos-bg:rgba(5,150,105,0.08); --pos-border:rgba(5,150,105,0.28);
+    --neg:#dc2626; --neg-bg:rgba(220,38,38,0.08); --neg-border:rgba(220,38,38,0.28);
+    --warn:#b45309; --warn-bg:rgba(180,83,9,0.08); --warn-border:rgba(180,83,9,0.25);
+    --src-him-dot:#6366f1; --src-him-text:#4f46e5; --src-rem-dot:#0d9488; --src-rem-text:#0f766e;
+  }
+  html,body{margin:0;padding:0;background:var(--bg);}
+  *{box-sizing:border-box;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--border3);border-radius:6px;border:2px solid var(--bg);}
+  ::-webkit-scrollbar-track{background:transparent;}
+  @keyframes jm-spin{to{transform:rotate(360deg);}}
+  @keyframes jm-pulse{0%,100%{opacity:1;}50%{opacity:.45;}}
+  @keyframes jm-fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;transition:background .25s ease,color .25s ease;">
+
+  <!-- ===================== GATE (username entry) ===================== -->
+  <sc-if value="{{ isGate }}" hint-placeholder-val="{{ true }}">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;animation:jm-fade .25s ease;">
+    <button onClick="{{ toggleTheme }}" title="Cambiar tema" style="position:absolute;top:20px;right:24px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--border2);border-radius:10px;color:var(--sub);cursor:pointer;">
+      <sc-if value="{{ themeDark }}" hint-placeholder-val="{{ true }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></sc-if>
+      <sc-if value="{{ themeLight }}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></sc-if>
+    </button>
+
+    <div style="width:100%;max-width:400px;">
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:28px;">
+        <div style="width:52px;height:52px;border-radius:15px;background:linear-gradient(135deg,#818cf8,#6366f1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;color:#0a0b0d;margin-bottom:16px;">J</div>
+        <h1 style="margin:0;font-size:22px;font-weight:700;letter-spacing:-0.02em;">JobMatch</h1>
+        <p style="margin:8px 0 0;font-size:13px;color:var(--sub);text-align:center;">Ofertas remotas rankeadas contra tu perfil.</p>
+      </div>
+
+      <div style="padding:24px;background:var(--panel);border:1px solid var(--border);border-radius:16px;">
+        <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">Username</label>
+        <input value="{{ gateUsername }}" onChange="{{ onGateInput }}" placeholder="tu-username" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;outline:none;" style-focus="border-color:var(--accent);" />
+        <button onClick="{{ doLogin }}" style="width:100%;height:42px;margin-top:14px;background:var(--accent);border:none;border-radius:10px;color:var(--accent-ink);font-weight:600;font-family:inherit;font-size:14px;cursor:pointer;">Entrar</button>
+
+        <div style="display:flex;align-items:center;gap:12px;margin:18px 0;">
+          <div style="flex:1;height:1px;background:var(--border);"></div>
+          <span style="font-size:11px;color:var(--muted);">¿PRIMERA VEZ?</span>
+          <div style="flex:1;height:1px;background:var(--border);"></div>
+        </div>
+
+        <button onClick="{{ createUser }}" style="width:100%;height:42px;background:transparent;border:1px solid var(--border2);border-radius:10px;color:var(--text);font-weight:500;font-family:inherit;font-size:14px;cursor:pointer;" style-hover="border-color:var(--accent);">Crear usuario</button>
+      </div>
+
+      <button onClick="{{ quickLogin }}" style="display:flex;align-items:center;gap:9px;width:100%;margin-top:12px;padding:11px 14px;background:var(--panel);border:1px solid var(--border);border-radius:12px;color:var(--sub);cursor:pointer;font-family:inherit;text-align:left;" style-hover="border-color:var(--border3);">
+        <span style="width:26px;height:26px;border-radius:50%;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--accent-text);">D</span>
+        <span style="flex:1;">Continuar como <span style="font-family:'JetBrains Mono',monospace;color:var(--text);">daniel-2026</span></span>
+        <span style="font-size:11px;color:var(--muted);">última sesión</span>
+      </button>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ===================== HEADER (chrome) ===================== -->
+  <sc-if value="{{ showChrome }}" hint-placeholder-val="{{ false }}">
+  <header style="position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:8px;height:60px;padding:0 24px;background:var(--head-bg);backdrop-filter:blur(12px);border-bottom:1px solid var(--head-border);">
+    <div onClick="{{ goList }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;margin-right:12px;">
+      <div style="width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#818cf8,#6366f1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#0a0b0d;">J</div>
+      <span style="font-weight:600;font-size:15px;letter-spacing:-0.01em;">JobMatch</span>
+    </div>
+
+    <nav style="display:flex;align-items:center;gap:2px;">
+      <button onClick="{{ goList }}" style="{{ navMatchesStyle }}">Matches</button>
+      <button onClick="{{ goSearch }}" style="{{ navSearchStyle }}">Buscar</button>
+      <button onClick="{{ goSchedules }}" style="{{ navSchedStyle }}">Programaciones</button>
+    </nav>
+
+    <div style="flex:1;"></div>
+
+    <button onClick="{{ toggleTheme }}" title="Cambiar tema" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--sub);cursor:pointer;">
+      <sc-if value="{{ themeDark }}" hint-placeholder-val="{{ true }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></sc-if>
+      <sc-if value="{{ themeLight }}" hint-placeholder-val="{{ false }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></sc-if>
+    </button>
+
+    <div title="{{ healthTip }}" style="display:flex;align-items:center;gap:7px;padding:0 10px;height:32px;border:1px solid var(--border2);border-radius:8px;cursor:default;">
+      <span style="width:7px;height:7px;border-radius:50%;background:{{ healthDot }};box-shadow:0 0 8px {{ healthDot }};"></span>
+      <span style="font-size:12px;color:var(--sub);">{{ healthLabel }}</span>
+    </div>
+
+    <button onClick="{{ openProfile }}" title="Editar perfil" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 8px;background:var(--panel);border:1px solid var(--border2);border-radius:8px;color:var(--accent-text);cursor:pointer;font-family:inherit;">
+      <span style="width:20px;height:20px;border-radius:50%;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--accent-text);">D</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);">{{ profileId }}</span>
+    </button>
+
+    <button onClick="{{ logout }}" title="Cerrar sesión" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--sub);cursor:pointer;" style-hover="color:var(--sc-red-fg);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+
+    <button onClick="{{ doRefresh }}" style="display:flex;align-items:center;gap:7px;height:32px;padding:0 13px;background:var(--accent);border:1px solid var(--accent);border-radius:8px;color:var(--accent-ink);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;">
+      <span style="width:14px;height:14px;display:inline-block;{{ refreshSpin }}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+      </span>
+      {{ refreshLabel }}
+    </button>
+  </header>
+  </sc-if>
+
+  <!-- ===================== LIST ROUTE ===================== -->
+  <sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}">
+  <main style="max-width:1120px;margin:0 auto;padding:32px 24px 96px;animation:jm-fade .25s ease;">
+
+    <sc-if value="{{ refreshing }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:20px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:10px;">
+        <span style="width:16px;height:16px;display:inline-block;color:var(--accent);animation:jm-spin 1s linear infinite;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+        </span>
+        <div style="flex:1;">
+          <div style="font-weight:600;color:var(--text);">Pipeline en ejecución</div>
+          <div style="font-size:13px;color:var(--sub);">Recolectando y scoreando ofertas. Los nuevos resultados aparecerán en unos minutos — podés seguir usando la app mientras tanto.</div>
+        </div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">202 · scheduled</span>
+      </div>
+    </sc-if>
+
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;">
+      <div>
+        <h1 style="margin:0;font-size:24px;font-weight:700;letter-spacing:-0.02em;">Matches</h1>
+        <p style="margin:6px 0 0;font-size:13px;color:var(--sub);">{{ countLabel }}</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;font-size:12px;color:var(--muted);">
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:2px;background:var(--sc-green-fg);"></span>≥70</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:2px;background:var(--sc-amber-fg);"></span>40–69</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:2px;background:var(--sc-red-fg);"></span>&lt;40</span>
+      </div>
+    </div>
+
+    <!-- READY -->
+    <sc-if value="{{ showReady }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <sc-for list="{{ viewMatches }}" as="m" hint-placeholder-count="4">
+        <div onClick="{{ m.open }}" style="display:flex;gap:20px;padding:18px 20px;background:var(--panel);border:1px solid var(--border);border-radius:14px;cursor:pointer;transition:border-color .15s,background .15s;" style-hover="border-color:var(--border3);">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="font-size:16px;font-weight:600;color:var(--text);letter-spacing:-0.01em;">{{ m.title }}</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;background:var(--chip-bg);border:1px solid var(--border2);border-radius:6px;font-size:11px;font-weight:500;color:{{ m.srcText }};">
+                <span style="width:6px;height:6px;border-radius:50%;background:{{ m.srcDot }};"></span>{{ m.srcLabel }}
+              </span>
+            </div>
+            <div style="font-size:13px;color:var(--sub);margin-bottom:12px;">{{ m.company }}</div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;">
+              <span style="width:15px;height:15px;flex:none;color:{{ m.strengthIcon }};margin-top:1px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <span style="color:var(--text2);">{{ m.topStrength }}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;margin-top:14px;">
+              <a href="{{ m.url }}" target="_blank" rel="noopener" onClick="{{ m.stop }}" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);text-decoration:none;" style-hover="color:var(--accent-text);">
+                Ver oferta original
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </a>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:12px;flex:none;">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:76px;height:64px;border-radius:12px;background:{{ m.scBg }};border:1px solid {{ m.scBorder }};">
+              <span style="font-size:26px;font-weight:700;line-height:1;color:{{ m.scFg }};font-family:'JetBrains Mono',monospace;">{{ m.scoreText }}</span>
+              <span style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:{{ m.scFg }};opacity:.75;margin-top:3px;">LLM</span>
+            </div>
+            <div style="width:96px;">
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px;">
+                <span style="letter-spacing:0.04em;">SEMÁNTICO</span>
+                <span style="font-family:'JetBrains Mono',monospace;color:{{ m.semColor }};">{{ m.semText }}</span>
+              </div>
+              <div style="height:4px;border-radius:3px;background:var(--hair);overflow:hidden;">
+                <div style="height:100%;width:{{ m.semPct }};background:var(--accent);border-radius:3px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <footer style="margin-top:40px;padding-top:20px;border-top:1px solid var(--head-border);">
+      <p style="margin:0;font-size:12px;color:var(--muted);line-height:1.6;">{{ attribution }}</p>
+    </footer>
+    </sc-if>
+
+    <!-- LOADING -->
+    <sc-if value="{{ showLoading }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <sc-for list="{{ skeletons }}" as="s" hint-placeholder-count="4">
+        <div style="display:flex;gap:20px;padding:18px 20px;background:var(--panel);border:1px solid var(--border);border-radius:14px;">
+          <div style="flex:1;">
+            <div style="height:16px;width:42%;background:var(--panel2);border-radius:6px;animation:jm-pulse 1.4s ease-in-out infinite;"></div>
+            <div style="height:12px;width:24%;background:var(--hair);border-radius:6px;margin-top:12px;animation:jm-pulse 1.4s ease-in-out infinite;"></div>
+            <div style="height:12px;width:60%;background:var(--hair);border-radius:6px;margin-top:18px;animation:jm-pulse 1.4s ease-in-out infinite;"></div>
+          </div>
+          <div style="width:76px;height:64px;background:var(--hair);border-radius:12px;animation:jm-pulse 1.4s ease-in-out infinite;"></div>
+        </div>
+      </sc-for>
+    </div>
+    </sc-if>
+
+    <!-- EMPTY -->
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+    <div style="text-align:center;padding:72px 24px;background:var(--panel);border:1px solid var(--border);border-radius:16px;">
+      <div style="width:52px;height:52px;margin:0 auto 18px;border-radius:14px;background:var(--panel2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--muted);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      </div>
+      <h2 style="margin:0 0 8px;font-size:18px;font-weight:600;">Todavía no hay matches</h2>
+      <p style="margin:0 auto 24px;max-width:420px;font-size:13px;color:var(--sub);">El pipeline todavía no scoreó ofertas para este perfil. Corré un refresh para recolectar y evaluar ofertas nuevas.</p>
+      <button onClick="{{ doRefresh }}" style="height:38px;padding:0 18px;background:var(--accent);border:none;border-radius:9px;color:var(--accent-ink);font-weight:600;font-family:inherit;font-size:13px;cursor:pointer;">Refrescar ofertas</button>
+    </div>
+    </sc-if>
+
+    <!-- ERROR -->
+    <sc-if value="{{ showError }}" hint-placeholder-val="{{ false }}">
+    <div style="text-align:center;padding:72px 24px;background:var(--neg-bg);border:1px solid var(--neg-border);border-radius:16px;">
+      <div style="width:52px;height:52px;margin:0 auto 18px;border-radius:14px;background:var(--neg-bg);border:1px solid var(--neg-border);display:flex;align-items:center;justify-content:center;color:var(--neg);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <h2 style="margin:0 0 8px;font-size:18px;font-weight:600;">No se pudieron cargar los matches</h2>
+      <p style="margin:0 auto 6px;max-width:440px;font-size:13px;color:var(--text2);">La API respondió con un error. Revisá el estado del sistema y volvé a intentar.</p>
+      <p style="margin:0 auto 24px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--neg);">500 · internal_error</p>
+      <button onClick="{{ retry }}" style="height:38px;padding:0 18px;background:transparent;border:1px solid var(--border2);border-radius:9px;color:var(--text);font-weight:500;font-family:inherit;font-size:13px;cursor:pointer;">Reintentar</button>
+    </div>
+    </sc-if>
+
+    <!-- ONBOARDING -->
+    <sc-if value="{{ showOnboard }}" hint-placeholder-val="{{ false }}">
+    <div style="text-align:center;padding:72px 24px;background:var(--panel);border:1px solid var(--border);border-radius:16px;">
+      <div style="width:56px;height:56px;margin:0 auto 20px;border-radius:15px;background:linear-gradient(135deg,#818cf8,#6366f1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:22px;color:#0a0b0d;">J</div>
+      <h2 style="margin:0 0 10px;font-size:20px;font-weight:700;letter-spacing:-0.01em;">Creá tu perfil para empezar</h2>
+      <p style="margin:0 auto 26px;max-width:460px;font-size:14px;color:var(--sub);line-height:1.6;">JobMatch rankea ofertas remotas contra tu perfil profesional. Contanos tu stack, seniority y un resumen — el matching semántico hace el resto.</p>
+      <button onClick="{{ openProfile }}" style="height:40px;padding:0 22px;background:var(--accent);border:none;border-radius:10px;color:var(--accent-ink);font-weight:600;font-family:inherit;font-size:14px;cursor:pointer;">Crear perfil</button>
+    </div>
+    </sc-if>
+
+  </main>
+  </sc-if>
+
+  <!-- ===================== DETAIL ROUTE ===================== -->
+  <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+  <main style="max-width:1000px;margin:0 auto;padding:24px 24px 96px;animation:jm-fade .25s ease;">
+    <button onClick="{{ goList }}" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:22px;background:none;border:none;color:var(--sub);font-family:inherit;font-size:13px;cursor:pointer;padding:0;" style-hover="color:var(--text);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Matches
+    </button>
+
+    <sc-if value="{{ detailMissing }}" hint-placeholder-val="{{ false }}">
+    <div style="text-align:center;padding:72px 24px;background:var(--panel);border:1px solid var(--border);border-radius:16px;">
+      <h2 style="margin:0 0 8px;font-size:18px;font-weight:600;">Match no encontrado</h2>
+      <p style="margin:0 auto 24px;max-width:420px;font-size:13px;color:var(--sub);">Esta oferta no existe para el perfil <span style="font-family:'JetBrains Mono',monospace;color:var(--accent-text);">{{ profileId }}</span>, o fue removida del pipeline.</p>
+      <p style="margin:0 0 24px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);">404 · not_found</p>
+      <button onClick="{{ goList }}" style="height:38px;padding:0 18px;background:transparent;border:1px solid var(--border2);border-radius:9px;color:var(--text);font-weight:500;font-family:inherit;font-size:13px;cursor:pointer;">Volver a matches</button>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ detailReady }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:26px;background:var(--panel);border:1px solid var(--border);border-radius:16px;margin-bottom:16px;">
+      <div style="display:flex;gap:24px;align-items:flex-start;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+            <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;background:var(--chip-bg);border:1px solid var(--border2);border-radius:6px;font-size:11px;font-weight:500;color:{{ d.srcText }};">
+              <span style="width:6px;height:6px;border-radius:50%;background:{{ d.srcDot }};"></span>{{ d.srcLabel }}
+            </span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">{{ d.jobId }}</span>
+            <span style="font-size:12px;color:var(--muted);">· scoreado {{ d.scoredRel }}</span>
+          </div>
+          <h1 style="margin:0 0 6px;font-size:26px;font-weight:700;letter-spacing:-0.02em;">{{ d.title }}</h1>
+          <div style="font-size:15px;color:var(--text2);">{{ d.company }}</div>
+          <a href="{{ d.url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:7px;margin-top:20px;height:38px;padding:0 16px;background:var(--accent);border-radius:9px;color:var(--accent-ink);font-weight:600;font-size:13px;text-decoration:none;">
+            Ver oferta original
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+        <div style="display:flex;gap:12px;flex:none;">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:104px;height:104px;border-radius:16px;background:{{ d.scBg }};border:1px solid {{ d.scBorder }};">
+            <span style="font-size:42px;font-weight:700;line-height:1;color:{{ d.scFg }};font-family:'JetBrains Mono',monospace;">{{ d.scoreText }}</span>
+            <span style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:{{ d.scFg }};opacity:.8;margin-top:6px;">Score LLM</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:104px;height:104px;border-radius:16px;background:var(--panel2);border:1px solid var(--border2);">
+            <span style="font-size:32px;font-weight:700;line-height:1;color:var(--accent-text);font-family:'JetBrains Mono',monospace;">{{ d.semText }}</span>
+            <span style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--sub);margin-top:8px;">Semántico</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <!-- VERDICT -->
+      <div style="padding:22px;background:var(--panel);border:1px solid var(--border);border-radius:16px;">
+        <h3 style="margin:0 0 18px;font-size:13px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--sub);">Veredicto</h3>
+        <sc-if value="{{ d.hasVerdict }}" hint-placeholder-val="{{ true }}">
+          <div style="margin-bottom:18px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+              <span style="width:16px;height:16px;color:var(--pos);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <span style="font-size:13px;font-weight:600;color:var(--pos);">Fortalezas</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <sc-for list="{{ d.strengths }}" as="s" hint-placeholder-count="3">
+                <div style="display:flex;gap:9px;font-size:13px;color:var(--text2);line-height:1.5;">
+                  <span style="color:var(--pos);flex:none;margin-top:2px;">+</span><span>{{ s }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <sc-if value="{{ d.hasRisks }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                <span style="width:16px;height:16px;color:var(--neg);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+                <span style="font-size:13px;font-weight:600;color:var(--neg);">Riesgos</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <sc-for list="{{ d.risks }}" as="r" hint-placeholder-count="1">
+                  <div style="display:flex;gap:9px;font-size:13px;color:var(--text2);line-height:1.5;">
+                    <span style="color:var(--neg);flex:none;margin-top:2px;">−</span><span>{{ r }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ d.noRisks }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;background:var(--pos-bg);border:1px solid var(--pos-border);border-radius:9px;font-size:12px;color:var(--pos);">
+              Sin riesgos identificados — match limpio.
+            </div>
+          </sc-if>
+        </sc-if>
+        <sc-if value="{{ d.noVerdict }}" hint-placeholder-val="{{ false }}">
+          <div style="text-align:center;padding:24px 12px;">
+            <div style="font-size:13px;color:var(--sub);">El veredicto todavía no fue generado para esta oferta.</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;">Corré un refresh para scorearla.</div>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- REQUIREMENTS -->
+      <div style="padding:22px;background:var(--panel);border:1px solid var(--border);border-radius:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <h3 style="margin:0;font-size:13px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--sub);">Requisitos</h3>
+          <sc-if value="{{ d.hasReq }}" hint-placeholder-val="{{ true }}">
+            <span title="Confianza de extracción del LLM" style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">conf {{ d.confText }}</span>
+          </sc-if>
+        </div>
+        <sc-if value="{{ d.hasReq }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;">
+            <sc-if value="{{ d.euWarning }}" hint-placeholder-val="{{ false }}">
+              <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--neg-bg);border:1px solid var(--neg-border);border-radius:7px;font-size:12px;font-weight:500;color:var(--neg);">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Exige residencia en la UE
+              </span>
+            </sc-if>
+            <sc-if value="{{ d.latamPos }}" hint-placeholder-val="{{ false }}">
+              <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--pos-bg);border:1px solid var(--pos-border);border-radius:7px;font-size:12px;font-weight:500;color:var(--pos);">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                LATAM-friendly
+              </span>
+            </sc-if>
+            <sc-if value="{{ d.latamNeg }}" hint-placeholder-val="{{ false }}">
+              <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:7px;font-size:12px;font-weight:500;color:var(--warn);">
+                No LATAM-friendly
+              </span>
+            </sc-if>
+          </div>
+          <div style="margin-bottom:18px;">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px;letter-spacing:0.04em;">STACK</div>
+            <div style="display:flex;flex-wrap:wrap;gap:7px;">
+              <sc-for list="{{ d.stack }}" as="tech" hint-placeholder-count="4">
+                <span style="padding:4px 10px;background:var(--panel2);border:1px solid var(--border2);border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-text);">{{ tech }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0;">
+            <sc-for list="{{ d.reqRows }}" as="row" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--hair);">
+                <span style="font-size:13px;color:var(--sub);">{{ row.label }}</span>
+                <span style="font-size:13px;font-weight:500;color:{{ row.color }};font-style:{{ row.style }};">{{ row.value }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ d.noReq }}" hint-placeholder-val="{{ false }}">
+          <div style="text-align:center;padding:24px 12px;">
+            <div style="font-size:13px;color:var(--sub);">Extracción de requisitos pendiente.</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;">El LLM todavía no procesó esta oferta.</div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:16px;overflow:hidden;">
+      <button onClick="{{ toggleRaw }}" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:18px 22px;background:none;border:none;color:var(--text);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;">
+        <span style="color:var(--sub);">Texto original de la oferta</span>
+        <span style="display:flex;align-items:center;gap:8px;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:400;font-size:12px;">
+          {{ rawToggleLabel }}
+          <span style="width:16px;height:16px;{{ rawChevron }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </span>
+      </button>
+      <sc-if value="{{ rawExpanded }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:0 22px 24px;">
+          <div style="max-height:340px;overflow-y:auto;padding:18px;background:var(--bg);border:1px solid var(--hair);border-radius:10px;font-size:14px;line-height:1.75;color:var(--text2);white-space:pre-wrap;">{{ d.rawText }}</div>
+        </div>
+      </sc-if>
+    </div>
+
+    <footer style="margin-top:28px;padding-top:20px;border-top:1px solid var(--head-border);">
+      <p style="margin:0;font-size:12px;color:var(--muted);line-height:1.6;">{{ attribution }}</p>
+    </footer>
+    </sc-if>
+  </main>
+  </sc-if>
+
+  <!-- ===================== SEARCH ROUTE ===================== -->
+  <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+  <main style="max-width:760px;margin:0 auto;padding:24px 24px 120px;animation:jm-fade .25s ease;">
+    <button onClick="{{ goList }}" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:22px;background:none;border:none;color:var(--sub);font-family:inherit;font-size:13px;cursor:pointer;padding:0;" style-hover="color:var(--text);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Matches
+    </button>
+
+    <sc-if value="{{ searchScheduled }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:20px;background:var(--pos-bg);border:1px solid var(--pos-border);border-radius:10px;">
+        <span style="width:18px;height:18px;color:var(--pos);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        <div style="flex:1;"><div style="font-weight:600;color:var(--text);">Búsqueda programada</div><div style="font-size:13px;color:var(--sub);">Corre en background contra tu perfil. Volvé a los matches en unos minutos.</div></div>
+        <button onClick="{{ goList }}" style="height:32px;padding:0 12px;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;">Ver matches</button>
+      </div>
+    </sc-if>
+
+    <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;letter-spacing:-0.02em;">Programar búsqueda</h1>
+    <p style="margin:0 0 28px;font-size:13px;color:var(--sub);">Se ejecuta contra tu perfil <span style="font-family:'JetBrains Mono',monospace;color:var(--accent-text);">{{ profileId }}</span> y rankea las nuevas ofertas automáticamente.</p>
+
+    <!-- keywords -->
+    <div style="margin-bottom:24px;">
+      <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">Palabras clave</label>
+      <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px;">
+        <sc-for list="{{ kwChips }}" as="k" hint-placeholder-count="3">
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 8px 5px 11px;background:var(--panel2);border:1px solid var(--border2);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-text);">
+            {{ k.name }}
+            <button onClick="{{ k.remove }}" style="display:flex;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;" style-hover="color:var(--neg);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </span>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <input value="{{ kwInput }}" onChange="{{ onKwInput }}" onKeyDown="{{ onKwKey }}" placeholder="agregar palabra clave y Enter" style="flex:1;height:38px;padding:0 12px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;" style-focus="border-color:var(--accent);" />
+        <button onClick="{{ addKw }}" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--panel2);border:1px solid var(--border2);border-radius:9px;color:var(--accent-text);cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      </div>
+      <button onClick="{{ seedFromProfile }}" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:none;border:none;color:var(--accent-text);font-family:inherit;font-size:12px;cursor:pointer;padding:0;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+        Usar el stack de mi perfil
+      </button>
+    </div>
+
+    <!-- sources -->
+    <div style="margin-bottom:24px;">
+      <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">Fuentes</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <sc-for list="{{ sourceOpts }}" as="o" hint-placeholder-count="2">
+          <button onClick="{{ o.onClick }}" style="{{ o.style }}">
+            <span style="width:7px;height:7px;border-radius:50%;background:{{ o.dot }};"></span>{{ o.label }}
+          </button>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- min score slider -->
+    <div style="margin-bottom:24px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <label style="font-size:13px;font-weight:500;color:var(--text2);">Score LLM mínimo</label>
+        <span style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:28px;padding:0 8px;border-radius:8px;background:{{ minScoreBg }};border:1px solid {{ minScoreBorder }};color:{{ minScoreFg }};font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;">{{ minScore }}</span>
+      </div>
+      <input type="range" min="0" max="100" step="5" value="{{ minScore }}" onChange="{{ onMinScore }}" style="width:100%;accent-color:var(--accent);cursor:pointer;" />
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px;"><span>0</span><span>100</span></div>
+    </div>
+
+    <!-- seniority multi -->
+    <div style="margin-bottom:24px;">
+      <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">Seniority objetivo</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <sc-for list="{{ searchSeniorityOpts }}" as="o" hint-placeholder-count="5">
+          <button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- toggles -->
+    <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:24px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:4px 16px;">
+      <sc-for list="{{ filterToggles }}" as="ft" hint-placeholder-count="3">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--hair);">
+          <div>
+            <div style="font-size:13px;font-weight:500;color:var(--text);">{{ ft.label }}</div>
+            <div style="font-size:12px;color:var(--muted);">{{ ft.hint }}</div>
+          </div>
+          <button onClick="{{ ft.onClick }}" style="position:relative;width:38px;height:22px;flex:none;border:none;border-radius:12px;background:{{ ft.track }};cursor:pointer;transition:background .15s;">
+            <span style="position:absolute;top:2px;left:{{ ft.knob }};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></span>
+          </button>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- salary + frequency -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px;align-items:start;">
+      <div>
+        <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">Salario mínimo</label>
+        <input value="{{ searchSalary }}" onChange="{{ onSearchSalary }}" placeholder="USD 80k+" style="width:100%;height:40px;padding:0 12px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:inherit;font-size:13px;outline:none;" style-focus="border-color:var(--accent);" />
+      </div>
+      <div>
+        <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">Frecuencia</label>
+        <div style="display:inline-flex;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--border2);border-radius:11px;width:100%;">
+          <sc-for list="{{ freqOpts }}" as="o" hint-placeholder-count="4">
+            <button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;">
+      <button onClick="{{ scheduleSearch }}" style="height:42px;padding:0 24px;background:var(--accent);border:none;border-radius:10px;color:var(--accent-ink);font-weight:600;font-family:inherit;font-size:14px;cursor:pointer;">Programar búsqueda</button>
+      <button onClick="{{ goList }}" style="height:42px;padding:0 20px;background:transparent;border:1px solid var(--border2);border-radius:10px;color:var(--text2);font-weight:500;font-family:inherit;font-size:14px;cursor:pointer;">Cancelar</button>
+    </div>
+  </main>
+  </sc-if>
+
+  <!-- ===================== SCHEDULES ROUTE ===================== -->
+  <sc-if value="{{ isSchedules }}" hint-placeholder-val="{{ false }}">
+  <main style="max-width:1000px;margin:0 auto;padding:32px 24px 96px;animation:jm-fade .25s ease;">
+
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap;">
+      <div>
+        <h1 style="margin:0;font-size:24px;font-weight:700;letter-spacing:-0.02em;">Programaciones</h1>
+        <p style="margin:6px 0 0;font-size:13px;color:var(--sub);">Cada búsqueda que programás dispara una corrida del pipeline en Airflow. Acá ves ambas cosas en una sola línea.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:8px;font-size:12px;white-space:nowrap;color:var(--accent-text);"><span style="width:6px;height:6px;border-radius:50%;background:var(--accent);"></span>{{ runningCount }} corriendo</span>
+        <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--panel2);border:1px solid var(--border2);border-radius:8px;font-size:12px;white-space:nowrap;color:var(--sub);"><span style="width:6px;height:6px;border-radius:50%;background:var(--muted);"></span>{{ queuedCount }} en cola</span>
+      </div>
+    </div>
+
+    <!-- filter tabs -->
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:18px;">
+      <sc-for list="{{ progFilterTabs }}" as="t" hint-placeholder-count="3">
+        <button onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+      </sc-for>
+    </div>
+
+    <!-- unified list -->
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <sc-for list="{{ programaciones }}" as="p" hint-placeholder-count="4">
+        <div style="display:flex;gap:16px;">
+          <!-- timeline rail -->
+          <div style="flex:none;display:flex;flex-direction:column;align-items:center;width:14px;">
+            <div style="width:14px;height:14px;border-radius:50%;background:var(--bg);border:2px solid {{ p.railColor }};margin-top:22px;"></div>
+            <div style="flex:1;width:2px;background:var(--border);margin:6px 0 0;"></div>
+          </div>
+
+          <!-- card -->
+          <div style="flex:1;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:16px;overflow:hidden;">
+            <!-- head -->
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 20px 12px;flex-wrap:wrap;">
+              <span style="display:inline-flex;align-items:center;gap:7px;padding:4px 11px;background:{{ p.chipBg }};border:1px solid {{ p.chipBd }};border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;color:{{ p.chipC }};">
+                <span style="width:7px;height:7px;border-radius:50%;background:{{ p.chipDot }};"></span>{{ p.statusLabel }}
+              </span>
+              <span style="padding:3px 9px;background:var(--chip-bg);border:1px solid var(--border2);border-radius:7px;font-size:11px;font-weight:500;white-space:nowrap;color:var(--sub);">{{ p.trigger }}</span>
+              <span style="font-size:13px;color:var(--text2);">{{ p.meta }}</span>
+              <div style="flex:1;"></div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap;">{{ p.shortId }}</span>
+              <button onClick="{{ p.toggle }}" style="width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--sub);cursor:pointer;">
+                <span style="width:15px;height:15px;{{ p.chevron }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+              </button>
+            </div>
+
+            <!-- config chips: keywords + filters -->
+            <div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 20px 6px;">
+              <sc-for list="{{ p.kwShown }}" as="kw" hint-placeholder-count="5">
+                <span style="padding:3px 9px;background:var(--panel2);border:1px solid var(--border2);border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap;color:var(--accent-text);">{{ kw }}</span>
+              </sc-for>
+              <sc-if value="{{ p.hasKwMore }}" hint-placeholder-val="{{ false }}">
+                <span style="padding:3px 9px;background:transparent;border:1px dashed var(--border3);border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">{{ p.kwMore }}</span>
+              </sc-if>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 20px 14px;">
+              <sc-for list="{{ p.chips }}" as="c" hint-placeholder-count="4">
+                <span style="padding:3px 9px;background:var(--chip-bg);border:1px solid var(--border2);border-radius:7px;font-size:11px;white-space:nowrap;color:var(--text2);">{{ c.text }}</span>
+              </sc-for>
+            </div>
+
+            <!-- connected stepper (single source of truth for pipeline state) -->
+            <div style="padding:6px 24px 20px;">
+              <div style="position:relative;">
+                <div style="position:absolute;top:14px;left:12.5%;right:12.5%;height:2px;background:var(--border2);border-radius:2px;"></div>
+                <div style="position:absolute;top:14px;left:12.5%;width:{{ p.progressWidth }};height:2px;background:var(--pos);border-radius:2px;"></div>
+                <div style="position:relative;display:flex;">
+                  <sc-for list="{{ p.stageView }}" as="s" hint-placeholder-count="4">
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;">
+                      <div style="width:30px;height:30px;border-radius:50%;background:var(--panel);border:2px solid {{ s.nodeBorder }};display:flex;align-items:center;justify-content:center;position:relative;z-index:1;">
+                        <sc-if value="{{ s.isSuccess }}" hint-placeholder-val="{{ false }}"><span style="width:14px;height:14px;color:var(--pos);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span></sc-if>
+                        <sc-if value="{{ s.isRunning }}" hint-placeholder-val="{{ false }}"><span style="width:14px;height:14px;color:var(--accent);animation:jm-spin 1s linear infinite;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/></svg></span></sc-if>
+                        <sc-if value="{{ s.isFailed }}" hint-placeholder-val="{{ false }}"><span style="width:13px;height:13px;color:var(--neg);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></sc-if>
+                        <sc-if value="{{ s.isPending }}" hint-placeholder-val="{{ true }}"><span style="width:7px;height:7px;border-radius:50%;background:var(--border3);"></span></sc-if>
+                      </div>
+                      <div style="text-align:center;">
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:{{ s.nameColor }};">{{ s.label }}</div>
+                        <div style="font-size:10px;color:{{ s.statusColor }};margin-top:2px;">{{ s.statusText }}</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <!-- expanded: timing + full config + stage spans -->
+            <sc-if value="{{ p.isOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 20px 20px;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:18px 20px;background:var(--bg);border:1px solid var(--hair);border-radius:12px;margin-bottom:14px;">
+                <div>
+                  <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Tiempos de la corrida</div>
+                  <sc-for list="{{ p.timeRows }}" as="row" hint-placeholder-count="5">
+                    <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--hair);font-size:13px;">
+                      <span style="color:var(--sub);">{{ row.label }}</span>
+                      <span style="color:var(--text);font-weight:500;text-align:right;">{{ row.value }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div>
+                  <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Criterios de la búsqueda</div>
+                  <sc-for list="{{ p.detailRows }}" as="row" hint-placeholder-count="9">
+                    <div style="display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:1px solid var(--hair);font-size:13px;">
+                      <span style="color:var(--sub);flex:none;">{{ row.label }}</span>
+                      <span style="color:{{ row.color }};font-style:{{ row.style }};font-weight:500;text-align:right;">{{ row.value }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <!-- per-stage timing -->
+              <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin:0 2px 8px;">Etapas del pipeline</div>
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <sc-for list="{{ p.stageView }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;background:var(--bg);border:1px solid var(--hair);border-radius:9px;">
+                    <span style="width:8px;height:8px;flex:none;border-radius:50%;background:{{ s.miniDot }};"></span>
+                    <span style="flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:{{ s.nameColor }};">{{ s.label }}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">{{ s.span }}</span>
+                    <span style="font-size:11px;font-weight:500;color:{{ s.statusColor }};min-width:60px;text-align:right;">{{ s.statusText }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <footer style="margin-top:32px;padding-top:20px;border-top:1px solid var(--head-border);">
+      <p style="margin:0;font-size:12px;color:var(--muted);line-height:1.6;">{{ attribution }}</p>
+    </footer>
+  </main>
+  </sc-if>
+
+  <!-- ===================== PROFILE ROUTE ===================== -->
+  <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ false }}">
+  <main style="max-width:720px;margin:0 auto;padding:24px 24px 120px;animation:jm-fade .25s ease;">
+    <button onClick="{{ goList }}" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:22px;background:none;border:none;color:var(--sub);font-family:inherit;font-size:13px;cursor:pointer;padding:0;" style-hover="color:var(--text);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Matches
+    </button>
+
+    <sc-if value="{{ profileSaved }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:20px;background:var(--pos-bg);border:1px solid var(--pos-border);border-radius:10px;">
+        <span style="width:18px;height:18px;color:var(--pos);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        <div style="flex:1;"><div style="font-weight:600;color:var(--text);">Perfil guardado</div><div style="font-size:13px;color:var(--sub);">El matching corre en background. Volvé a la lista en unos minutos para ver los resultados.</div></div>
+      </div>
+    </sc-if>
+
+    <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;letter-spacing:-0.02em;">Tu perfil</h1>
+    <p style="margin:0 0 28px;font-size:13px;color:var(--sub);">Se guarda localmente y define contra qué se rankean las ofertas.</p>
+
+    <div style="margin-bottom:22px;">
+      <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">ID de perfil</label>
+      <input value="{{ profileId }}" onChange="{{ onField.id }}" placeholder="daniel-2026" style="width:100%;height:40px;padding:0 12px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;" style-focus="border-color:var(--accent);" />
+      <p style="margin:7px 0 0;font-size:12px;color:var(--muted);">Slug único. Identifica tu perfil sin necesidad de login.</p>
+    </div>
+
+    <div style="margin-bottom:22px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <label style="font-size:13px;font-weight:500;color:var(--text2);">Resumen profesional</label>
+        <span style="font-size:12px;color:{{ summaryCountColor }};font-family:'JetBrains Mono',monospace;">{{ summaryCount }}/2000</span>
+      </div>
+      <textarea value="{{ summary }}" onChange="{{ onField.summary }}" rows="5" placeholder="Backend developer con foco en APIs..." style="width:100%;padding:12px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:inherit;font-size:14px;line-height:1.6;resize:vertical;outline:none;" style-focus="border-color:var(--accent);"></textarea>
+      <p style="margin:7px 0 0;font-size:12px;color:var(--accent-text);">★ Es la pieza más importante del matching semántico — sé específico sobre tecnologías, dominios y logros.</p>
+    </div>
+
+    <div style="margin-bottom:22px;">
+      <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">Stack &amp; experiencia</label>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <sc-for list="{{ stackRows }}" as="row" hint-placeholder-count="3">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input value="{{ row.name }}" onChange="{{ row.onName }}" placeholder="tecnología" style="flex:1;height:38px;padding:0 12px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;" style-focus="border-color:var(--accent);" />
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input value="{{ row.years }}" onChange="{{ row.onYears }}" type="number" min="0" max="40" step="0.5" style="width:72px;height:38px;padding:0 10px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;text-align:center;" style-focus="border-color:var(--accent);" />
+              <span style="font-size:12px;color:var(--muted);">años</span>
+            </div>
+            <button onClick="{{ row.remove }}" title="Quitar" style="width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--muted);cursor:pointer;" style-hover="border-color:var(--neg-border);color:var(--neg);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </sc-for>
+      </div>
+      <button onClick="{{ addStackRow }}" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;height:34px;padding:0 12px;background:var(--panel2);border:1px dashed var(--border3);border-radius:9px;color:var(--accent-text);font-family:inherit;font-size:13px;cursor:pointer;" style-hover="border-color:var(--accent);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Agregar tecnología
+      </button>
+    </div>
+
+    <div style="margin-bottom:22px;">
+      <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">Seniority</label>
+      <div style="display:inline-flex;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--border2);border-radius:11px;">
+        <sc-for list="{{ seniorityOpts }}" as="o" hint-placeholder-count="5">
+          <button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="margin-bottom:22px;">
+      <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">Modalidad</label>
+      <div style="display:inline-flex;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--border2);border-radius:11px;">
+        <sc-for list="{{ modalityOpts }}" as="o" hint-placeholder-count="3">
+          <button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;">
+      <div>
+        <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">Nivel de inglés</label>
+        <select value="{{ english }}" onChange="{{ onField.english }}" style="width:100%;height:40px;padding:0 12px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:inherit;font-size:13px;outline:none;cursor:pointer;" style-focus="border-color:var(--accent);">
+          <sc-for list="{{ englishOpts }}" as="e" hint-placeholder-count="7">
+            <option value="{{ e }}">{{ e }}</option>
+          </sc-for>
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">Ubicación</label>
+        <input value="{{ location }}" onChange="{{ onField.location }}" placeholder="AR" style="width:100%;height:40px;padding:0 12px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:inherit;font-size:13px;outline:none;" style-focus="border-color:var(--accent);" />
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;margin-bottom:32px;">
+      <div>
+        <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">Expectativa salarial</label>
+        <input value="{{ salary }}" onChange="{{ onField.salary }}" placeholder="USD 60k+" style="width:100%;height:40px;padding:0 12px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:inherit;font-size:13px;outline:none;" style-focus="border-color:var(--accent);" />
+      </div>
+      <div>
+        <label style="display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;">¿Dispuesto a relocar?</label>
+        <button onClick="{{ toggleRelocate }}" style="display:flex;align-items:center;gap:10px;height:40px;padding:0 14px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:inherit;font-size:13px;cursor:pointer;">
+          <span style="position:relative;width:34px;height:20px;border-radius:11px;background:{{ relocateTrack }};transition:background .15s;">
+            <span style="position:absolute;top:2px;left:{{ relocateKnob }};width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s;"></span>
+          </span>
+          {{ relocateLabel }}
+        </button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;">
+      <button onClick="{{ submitProfile }}" style="height:42px;padding:0 24px;background:var(--accent);border:none;border-radius:10px;color:var(--accent-ink);font-weight:600;font-family:inherit;font-size:14px;cursor:pointer;">Guardar perfil</button>
+      <button onClick="{{ goList }}" style="height:42px;padding:0 20px;background:transparent;border:1px solid var(--border2);border-radius:10px;color:var(--text2);font-weight:500;font-family:inherit;font-size:14px;cursor:pointer;">Cancelar</button>
+    </div>
+  </main>
+  </sc-if>
+
+  <!-- ===================== DEMO SWITCHER ===================== -->
+  <div style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:50;display:flex;align-items:center;gap:6px;padding:6px;background:var(--head-bg);backdrop-filter:blur(12px);border:1px solid var(--border3);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);flex-wrap:wrap;justify-content:center;max-width:94vw;">
+    <span style="font-size:10px;color:var(--muted);letter-spacing:0.06em;padding:0 6px;text-transform:uppercase;">Demo</span>
+    <sc-for list="{{ demoBtns }}" as="b" hint-placeholder-count="9">
+      <button onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</button>
+    </sc-for>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  matches = [
+    { job_id:'a1b2c3d4e5', title:'Senior Backend Engineer', company:'Acme Corp', source:'himalayas',
+      url:'https://himalayas.app/jobs/senior-backend', llm_score:82, semantic_score:0.734,
+      verdict:{ score:82, strengths:['5+ años Python','Experiencia FastAPI','Inglés B2 suficiente'], risks:['Piden Kubernetes, no está en tu perfil'] },
+      requirements:{ stack:['python','fastapi','postgres','redis'], seniority:'senior', english_level:'B2', requires_eu_residency:false, remote:true, latam_friendly:true, salary_range:'$90k–$120k', confidence:0.85 },
+      scored_rel:'hace 3 h',
+      raw_text:'About the role\n\nWe are looking for a Senior Backend Engineer to join our platform team. You will design and build high-throughput APIs powering our core product, working closely with product and infrastructure.\n\nResponsibilities\n• Design, build and maintain RESTful and event-driven services in Python (FastAPI).\n• Own data models and query performance on PostgreSQL, with Redis for caching and queues.\n• Collaborate on service reliability, observability and on-call rotation.\n\nRequirements\n• 5+ years building backend systems in Python.\n• Strong experience with FastAPI or similar async frameworks.\n• Solid SQL and database design skills.\n• Experience deploying to Kubernetes is a strong plus.\n• English at B2+ for async written communication.\n\nWe are fully remote and hire globally, including LATAM.' },
+    { job_id:'f6g7h8i9j0', title:'Staff Platform Engineer', company:'Northwind', source:'remotive',
+      url:'https://remotive.com/jobs/staff-platform', llm_score:91, semantic_score:0.812,
+      verdict:{ score:91, strengths:['Stack cloud-native alineado','Nivel staff coincide con tu perfil','Salario dentro de tu expectativa','Zona horaria compatible con LATAM'], risks:[] },
+      requirements:{ stack:['go','kubernetes','terraform','aws','postgres'], seniority:'staff', english_level:'C1', requires_eu_residency:false, remote:true, latam_friendly:true, salary_range:'$140k–$180k', confidence:0.92 },
+      scored_rel:'hace 1 h',
+      raw_text:'Staff Platform Engineer — Fully Remote\n\nNorthwind is building the infrastructure layer for modern data teams. As a Staff Platform Engineer you will set technical direction for our compute and orchestration platform.\n\nWhat you will do\n• Lead the design of our multi-tenant Kubernetes platform.\n• Define IaC standards with Terraform across AWS.\n• Mentor senior engineers and drive cross-team architecture.\n\nWhat we look for\n• Deep experience with Go and distributed systems.\n• Production Kubernetes and Terraform at scale.\n• Staff-level scope: influence beyond a single team.\n\nWe are remote-first and hire across the Americas.' },
+    { job_id:'k1l2m3n4o5', title:'Full Stack Developer', company:'Globex', source:'himalayas',
+      url:'https://himalayas.app/jobs/full-stack', llm_score:64, semantic_score:0.588,
+      verdict:{ score:64, strengths:['Experiencia full-stack sólida','Postgres bien cubierto'], risks:['Piden React avanzado, tu foco es backend','Sin experiencia en GraphQL'] },
+      requirements:{ stack:['typescript','react','node','postgres'], seniority:'mid', english_level:'B2', requires_eu_residency:false, remote:true, latam_friendly:null, salary_range:null, confidence:0.71 },
+      scored_rel:'hace 6 h',
+      raw_text:'Full Stack Developer\n\nGlobex is hiring a Full Stack Developer to work across our web application. You will touch everything from the React frontend to the Node/Postgres backend.\n\nRequirements\n• Strong TypeScript across frontend and backend.\n• Advanced React (hooks, state management, performance).\n• Comfort with Node.js services and PostgreSQL.\n• GraphQL experience preferred.\n\nRemote within compatible time zones.' },
+    { job_id:'p6q7r8s9t0', title:'Python Data Engineer', company:'Initech', source:'remotive',
+      url:'https://remotive.com/jobs/data-engineer', llm_score:45, semantic_score:0.501,
+      verdict:{ score:45, strengths:['Python fuerte'], risks:['Foco en data pipelines, no en APIs','Piden Spark/Airflow','Sin experiencia en ETL a gran escala'] },
+      requirements:{ stack:['python','spark','airflow','snowflake'], seniority:'senior', english_level:'C1', requires_eu_residency:true, remote:true, latam_friendly:false, salary_range:'$100k–$130k', confidence:0.68 },
+      scored_rel:'hace 9 h',
+      raw_text:'Python Data Engineer (EU)\n\nInitech is looking for a Data Engineer to build and maintain our data platform.\n\nRequirements\n• Strong Python for data processing.\n• Production experience with Spark and Airflow.\n• Data warehousing with Snowflake.\n• Must be legally resident in the EU.\n\nRemote within EU time zones only.' },
+    { job_id:'u1v2w3x4y5', title:'Frontend Engineer (React)', company:'Umbrella', source:'himalayas',
+      url:'https://himalayas.app/jobs/frontend-react', llm_score:33, semantic_score:0.402,
+      verdict:{ score:33, strengths:['Conocés TypeScript'], risks:['Rol 100% frontend, tu perfil es backend','Sin portfolio de UI','Piden experiencia en design systems'] },
+      requirements:{ stack:['react','typescript','css','figma'], seniority:'mid', english_level:null, requires_eu_residency:false, remote:true, latam_friendly:null, salary_range:null, confidence:0.55 },
+      scored_rel:'hace 12 h',
+      raw_text:'Frontend Engineer\n\nUmbrella is hiring a Frontend Engineer focused on our design system and component library.\n\nRequirements\n• Expert React and TypeScript.\n• Strong CSS and accessibility fundamentals.\n• Experience building and maintaining design systems.\n• Figma fluency.\n\nFully remote.' },
+    { job_id:'z6a7b8c9d0', title:'DevOps Engineer', company:'Hooli', source:'remotive',
+      url:'https://remotive.com/jobs/devops', llm_score:null, semantic_score:null,
+      verdict:null, requirements:null, scored_rel:null,
+      raw_text:'DevOps Engineer\n\nHooli is hiring a DevOps Engineer. Full job description pending extraction.' },
+  ];
+
+  // Cada programación ES una corrida del pipeline (comparten run_id). Una sola lista.
+  programaciones = [
+    { id:'p1', runId:'manual__2026-07-05T09:25:13.162665+00:00', status:'queued', trigger:'Manual',
+      creada:'4 jul 2026, 16:25', creadaRel:'este minuto', programada:'5 jul 2026, 4:25', inicio:null, fin:null, duracion:null, whenShort:'programada 5 jul, 4:25', nextRel:'inicia en ~11 h',
+      detail:{ keywords:['python','aws','postgres','docker','sqlalchemy','airflow','pydantic','react','typescript','angular','redis','mongodb','sql'],
+        fuentes:'Todas', minScore:80, seniority:['mid','senior'], english:null, remote:true, latam:null, excludeEU:null, salaryPublished:null, salaryRange:'USD 40.000–90.000' },
+      stages:[{k:'recolectar',state:'pending'},{k:'extraer_requisitos',state:'pending'},{k:'embeddings',state:'pending'},{k:'score_perfiles',state:'pending'}] },
+    { id:'p2', runId:'scheduled__2026-07-04T16:00:00+00:00', status:'running', trigger:'Programada',
+      creada:'4 jul 2026, 13:00', creadaRel:'hace 3 h', programada:'4 jul 2026, 16:00', inicio:'4 jul 2026, 16:00:04', fin:null, duracion:null, whenShort:'hoy 16:00 · en curso', nextRel:null,
+      detail:{ keywords:['go','kubernetes','terraform','aws'], fuentes:'Todas', minScore:70, seniority:['senior','staff'], english:'C1', remote:true, latam:true, excludeEU:false, salaryPublished:true, salaryRange:'USD 120.000+' },
+      stages:[{k:'recolectar',state:'success',span:'16:00:04 → 16:00:07',dur:'3s'},{k:'extraer_requisitos',state:'running',span:'16:00:08 → …',dur:null},{k:'embeddings',state:'pending'},{k:'score_perfiles',state:'pending'}] },
+    { id:'p3', runId:'scheduled__2026-07-04T04:00:00+00:00', status:'success', trigger:'Programada',
+      creada:'3 jul 2026, 22:00', creadaRel:'ayer', programada:'4 jul 2026, 4:00', inicio:'4 jul 2026, 14:43:16', fin:'4 jul 2026, 14:43:25', duracion:'10s', whenShort:'4 jul, 14:43 · 10s', nextRel:null,
+      detail:{ keywords:['python','fastapi','postgres','redis'], fuentes:'Himalayas', minScore:75, seniority:['senior'], english:'B2', remote:true, latam:true, excludeEU:true, salaryPublished:null, salaryRange:'USD 90.000–120.000' },
+      stages:[{k:'recolectar',state:'success',span:'14:43:16 → 14:43:18',dur:'2s'},{k:'extraer_requisitos',state:'success',span:'14:43:19 → 14:43:19',dur:'0s'},{k:'embeddings',state:'success',span:'14:43:20 → 14:43:20',dur:'0s'},{k:'score_perfiles',state:'success',span:'14:43:23 → 14:43:25',dur:'2s'}] },
+    { id:'p4', runId:'scheduled__2026-07-03T16:00:00+00:00', status:'failed', trigger:'Programada',
+      creada:'3 jul 2026, 10:00', creadaRel:'hace 2 días', programada:'3 jul 2026, 16:00', inicio:'3 jul 2026, 16:00:02', fin:'3 jul 2026, 16:00:43', duracion:'41s', whenShort:'3 jul, 16:00 · falló', nextRel:null,
+      detail:{ keywords:['python','spark','airflow'], fuentes:'Remotive', minScore:60, seniority:['senior'], english:'C1', remote:true, latam:false, excludeEU:false, salaryPublished:null, salaryRange:null },
+      stages:[{k:'recolectar',state:'success',span:'16:00:02 → 16:00:19',dur:'17s'},{k:'extraer_requisitos',state:'failed',span:'16:00:20 → 16:00:43',dur:'23s'},{k:'embeddings',state:'skipped'},{k:'score_perfiles',state:'skipped'}] },
+    { id:'p5', runId:'scheduled__2026-07-03T04:00:00+00:00', status:'success', trigger:'Programada',
+      creada:'2 jul 2026, 22:00', creadaRel:'hace 2 días', programada:'3 jul 2026, 4:00', inicio:'3 jul 2026, 04:00:03', fin:'3 jul 2026, 04:00:18', duracion:'12s', whenShort:'3 jul, 04:00 · 12s', nextRel:null,
+      detail:{ keywords:['typescript','react','node','postgres'], fuentes:'Todas', minScore:65, seniority:['mid','senior'], english:'B2', remote:true, latam:null, excludeEU:false, salaryPublished:false, salaryRange:null },
+      stages:[{k:'recolectar',state:'success',span:'04:00:03 → 04:00:11',dur:'8s'},{k:'extraer_requisitos',state:'success',span:'04:00:12 → 04:00:13',dur:'1s'},{k:'embeddings',state:'success',span:'04:00:14 → 04:00:15',dur:'1s'},{k:'score_perfiles',state:'success',span:'04:00:16 → 04:00:18',dur:'2s'}] },
+  ];
+
+  scheduledSearches_OLD = [
+    { id:'sch1', runId:'manual__2026-07-05T09:25:13.162665+00:00', status:'queued', nextRel:'se ejecuta en ~11 h',
+      creada:'4 jul 2026, 16:25', creadaRel:'este minuto', programada:'5 jul 2026, 4:25', inicio:null, fin:null, duracion:null,
+      detail:{ keywords:['python','aws','postgres','docker','sqlalchemy','airflow','pydantic','react','typescript','angular','redis','mongodb','sql'],
+        fuentes:'Todas', minScore:80, seniority:['mid','senior'], english:null, remote:true, latam:null, excludeEU:null, salaryPublished:null, salaryRange:'USD 40.000–90.000' },
+      stages:[{k:'recolectar',state:'pending'},{k:'extraer_requisitos',state:'pending'},{k:'embeddings',state:'pending'},{k:'score_perfiles',state:'pending'}] },
+    { id:'sch2', runId:'manual__2026-07-05T09:06:12.668859+00:00', status:'queued', nextRel:'se ejecuta en ~11 h',
+      creada:'4 jul 2026, 16:06', creadaRel:'hace 19 min', programada:'5 jul 2026, 4:06', inicio:null, fin:null, duracion:null,
+      detail:{ keywords:['python','aws'], fuentes:'Todas', minScore:75, seniority:['senior'], english:null, remote:true, latam:null, excludeEU:true, salaryPublished:null, salaryRange:'USD 60.000+' },
+      stages:[{k:'recolectar',state:'pending'},{k:'extraer_requisitos',state:'pending'},{k:'embeddings',state:'pending'},{k:'score_perfiles',state:'pending'}] },
+  ];
+
+  pipelineRuns = [
+    { id:'run1', runId:'manual__2026-07-05T09:25:13.162665+00:00', status:'queued', trigger:'Manual', when:'Aún no inició', dur:null,
+      stages:[{k:'recolectar',state:'pending'},{k:'extraer_requisitos',state:'pending'},{k:'embeddings',state:'pending'},{k:'score_perfiles',state:'pending'}] },
+    { id:'run2', runId:'manual__2026-07-05T09:06:12.668859+00:00', status:'queued', trigger:'Manual', when:'Aún no inició', dur:null,
+      stages:[{k:'recolectar',state:'pending'},{k:'extraer_requisitos',state:'pending'},{k:'embeddings',state:'pending'},{k:'score_perfiles',state:'pending'}] },
+    { id:'run3', runId:'scheduled__2026-07-04T16:00:00+00:00', status:'running', trigger:'Programada', when:'hoy, 16:00 · en curso', dur:null,
+      stages:[{k:'recolectar',state:'success',span:'16:00:04 → 16:00:07',dur:'3s'},{k:'extraer_requisitos',state:'running',span:'16:00:08 → …',dur:null},{k:'embeddings',state:'pending'},{k:'score_perfiles',state:'pending'}] },
+    { id:'run4', runId:'scheduled__2026-07-04T04:00:00+00:00', status:'success', trigger:'Programada', when:'4 jul, 14:43 → 14:43', dur:'10s',
+      stages:[{k:'recolectar',state:'success',span:'14:43:16 → 14:43:18',dur:'2s'},{k:'extraer_requisitos',state:'success',span:'14:43:19 → 14:43:19',dur:'0s'},{k:'embeddings',state:'success',span:'14:43:20 → 14:43:20',dur:'0s'},{k:'score_perfiles',state:'success',span:'14:43:23 → 14:43:25',dur:'2s'}] },
+    { id:'run5', runId:'scheduled__2026-07-03T16:00:00+00:00', status:'failed', trigger:'Programada', when:'3 jul, 16:00 → 16:01', dur:'41s',
+      stages:[{k:'recolectar',state:'success',span:'16:00:02 → 16:00:19',dur:'17s'},{k:'extraer_requisitos',state:'failed',span:'16:00:20 → 16:00:43',dur:'23s'},{k:'embeddings',state:'skipped'},{k:'score_perfiles',state:'skipped'}] },
+    { id:'run6', runId:'scheduled__2026-07-03T04:00:00+00:00', status:'success', trigger:'Programada', when:'3 jul, 04:00 → 04:00', dur:'12s',
+      stages:[{k:'recolectar',state:'success',span:'04:00:03 → 04:00:11',dur:'8s'},{k:'extraer_requisitos',state:'success',span:'04:00:12 → 04:00:13',dur:'1s'},{k:'embeddings',state:'success',span:'04:00:14 → 04:00:15',dur:'1s'},{k:'score_perfiles',state:'success',span:'04:00:16 → 04:00:18',dur:'2s'}] },
+  ];
+
+  state = {
+    theme:'dark',
+    route:'gate', listState:'ready', selected:null, refreshing:false, expanded:{}, progFilter:'all',
+    rawExpanded:false, profileSaved:false,
+    gateUsername:'',
+    profileId:'daniel-2026',
+    summary:'Backend developer con foco en APIs de alto tráfico. 5 años con Python y FastAPI, PostgreSQL y AWS. Inglés B2 para comunicación async. Busco 100% remoto en zona horaria compatible con LATAM.',
+    seniority:'senior', english:'B2', modality:'remote', location:'AR', relocate:false, salary:'USD 60k+',
+    stack:[{name:'python',years:'5'},{name:'fastapi',years:'4'},{name:'postgres',years:'5'},{name:'aws',years:'3'}],
+    // search
+    searchScheduled:false, kwInput:'',
+    search:{ kw:['python','fastapi','backend'], sources:{himalayas:true,remotive:true}, minScore:60,
+      seniority:{junior:false,mid:false,senior:true,lead:false,staff:true}, remote:true, latam:true, excludeEU:true,
+      salary:'USD 80k+', freq:'12h' },
+  };
+
+  componentDidMount(){ this.syncTheme(); }
+  componentDidUpdate(){ this.syncTheme(); }
+  syncTheme(){ try{ document.documentElement.setAttribute('data-om-theme', this.state.theme); }catch(e){} }
+  toggleTheme = ()=>{ this.setState(s=>({ theme: s.theme==='dark'?'light':'dark' })); };
+
+  SRC = { himalayas:{ label:'Himalayas', dot:'var(--src-him-dot)', text:'var(--src-him-text)' },
+          remotive:{ label:'Remotive', dot:'var(--src-rem-dot)', text:'var(--src-rem-text)' } };
+
+  scoreColors(s){
+    if(s===null||s===undefined) return { fg:'var(--sc-null-fg)', bg:'var(--sc-null-bg)', border:'var(--sc-null-border)', text:'—' };
+    if(s>=70) return { fg:'var(--sc-green-fg)', bg:'var(--sc-green-bg)', border:'var(--sc-green-border)', text:String(s) };
+    if(s>=40) return { fg:'var(--sc-amber-fg)', bg:'var(--sc-amber-bg)', border:'var(--sc-amber-border)', text:String(s) };
+    return { fg:'var(--sc-red-fg)', bg:'var(--sc-red-bg)', border:'var(--sc-red-border)', text:String(s) };
+  }
+  src(s){ return this.SRC[s] || { label:s, dot:'var(--muted)', text:'var(--text2)' }; }
+
+  enrichCard(m){
+    const sc = this.scoreColors(m.llm_score);
+    const src = this.src(m.source);
+    const hasSem = m.semantic_score!==null && m.semantic_score!==undefined;
+    const top = m.verdict && m.verdict.strengths && m.verdict.strengths.length ? m.verdict.strengths[0] : (m.llm_score===null ? 'Sin veredicto — scoring pendiente' : 'Sin fortalezas destacadas');
+    return { ...m, srcLabel:src.label, srcDot:src.dot, srcText:src.text,
+      scoreText:sc.text, scFg:sc.fg, scBg:sc.bg, scBorder:sc.border,
+      semText: hasSem ? m.semantic_score.toFixed(3) : 'sin score',
+      semColor: hasSem ? 'var(--accent-text)' : 'var(--muted)',
+      semPct: hasSem ? Math.round(m.semantic_score*100)+'%' : '0%',
+      topStrength: top, strengthIcon: m.llm_score===null ? 'var(--muted)' : 'var(--pos)',
+      open:()=>this.openDetail(m.job_id), stop:(e)=>e.stopPropagation() };
+  }
+
+  buildDetail(m){
+    const card = this.enrichCard(m); const v = m.verdict; const r = m.requirements;
+    const d = { ...card, jobId:m.job_id, scoredRel:m.scored_rel || 'pendiente',
+      hasVerdict:!!v, noVerdict:!v, strengths: v?v.strengths:[], risks: v?(v.risks||[]):[],
+      hasRisks:!!(v&&v.risks&&v.risks.length), noRisks:!!(v&&(!v.risks||v.risks.length===0)),
+      hasReq:!!r, noReq:!r, rawText:m.raw_text||'' };
+    if(r){
+      d.stack = r.stack||[]; d.confText = r.confidence!=null ? r.confidence.toFixed(2) : '—';
+      d.euWarning = r.requires_eu_residency===true; d.latamPos = r.latam_friendly===true; d.latamNeg = r.latam_friendly===false;
+      const nv = { value:'No especificado', color:'var(--muted)', style:'italic' };
+      const va = (x)=>({ value:x, color:'var(--text)', style:'normal' });
+      const cap = (s)=> s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
+      d.reqRows = [
+        { label:'Seniority', ...(r.seniority?va(cap(r.seniority)):nv) },
+        { label:'Inglés requerido', ...(r.english_level?va(r.english_level):nv) },
+        { label:'Remoto', ...(r.remote===true?va('Sí'):(r.remote===false?va('No'):nv)) },
+        { label:'Rango salarial', ...(r.salary_range?va(r.salary_range):nv) },
+      ];
+    } else { d.stack=[]; d.reqRows=[]; }
+    return d;
+  }
+
+  // nav
+  openDetail(id){ this.setState({ route:'detail', selected:id, rawExpanded:false }); window.scrollTo(0,0); }
+  goList = ()=>{ this.setState({ route:'list', profileSaved:false }); window.scrollTo(0,0); };
+  goSearch = ()=>{ this.setState({ route:'search', searchScheduled:false }); window.scrollTo(0,0); };
+  goSchedules = ()=>{ this.setState({ route:'schedules' }); window.scrollTo(0,0); };
+  toggleExpand = (id)=>{ this.setState(s=>({ expanded:{...s.expanded, [id]:!s.expanded[id]} })); };
+
+  // ----- pipeline / schedules helpers -----
+  stageColor(state){ return state==='success'?'var(--pos)': state==='running'?'var(--accent)': state==='failed'?'var(--neg)':'var(--border3)'; }
+  stageView(stages){
+    const n = stages.length;
+    const view = stages.map(s=>{
+      const pend = (s.state==='pending'||s.state==='skipped');
+      const statusText = s.state==='success'?(s.dur||'ok'): s.state==='running'?'corriendo': s.state==='failed'?'falló': s.state==='skipped'?'omitido':'pendiente';
+      return { label:s.k, span:s.span||'—', dur:s.dur, hasSpan:!!s.span,
+        isSuccess:s.state==='success', isRunning:s.state==='running', isFailed:s.state==='failed', isPending:pend,
+        nodeBorder:this.stageColor(s.state), miniDot:this.stageColor(s.state),
+        nameColor: pend?'var(--muted)':'var(--text2)',
+        statusText, statusColor: pend?'var(--muted)':this.stageColor(s.state) };
+    });
+    let filled=0; for(let i=0;i<n-1;i++){ if(stages[i].state==='success') filled++; }
+    const frac = n>1 ? filled/(n-1) : 0;
+    return { view, progressWidth:(frac*75)+'%' };
+  }
+  statusChip(status){
+    const m = {
+      queued:{ label:'en cola', c:'var(--sub)', bg:'var(--panel2)', bd:'var(--border2)', dot:'var(--muted)' },
+      running:{ label:'corriendo', c:'var(--accent-text)', bg:'var(--accent-bg)', bd:'var(--accent-border)', dot:'var(--accent)' },
+      success:{ label:'éxito', c:'var(--pos)', bg:'var(--pos-bg)', bd:'var(--pos-border)', dot:'var(--pos)' },
+      failed:{ label:'falló', c:'var(--neg)', bg:'var(--neg-bg)', bd:'var(--neg-border)', dot:'var(--neg)' },
+    };
+    return m[status] || m.queued;
+  }
+  shortId(id){ const parts=String(id).split('__'); const tail=(parts[1]||id).replace('+00:00','').slice(-6); return (parts[0]||'run')+' · …'+tail; }
+  buildSchedule(x){
+    const sv = this.stageView(x.stages);
+    const chip = this.statusChip(x.status);
+    const dt = x.detail;
+    const chips = [];
+    chips.push({ text:'≥ '+dt.minScore, mono:true });
+    if(dt.seniority && dt.seniority.length) chips.push({ text:dt.seniority.join(' · '), mono:false });
+    chips.push({ text:'Fuentes: '+dt.fuentes, mono:false });
+    if(dt.remote) chips.push({ text:'remoto', mono:false });
+    if(dt.latam===true) chips.push({ text:'LATAM', mono:false });
+    if(dt.excludeEU===true) chips.push({ text:'excluye UE', mono:false });
+    if(dt.salaryPublished===true) chips.push({ text:'salario publicado', mono:false });
+    const kw = dt.keywords||[];
+    const kwShown = kw.slice(0,5);
+    const nv = { value:'No especificado', color:'var(--muted)', style:'italic' };
+    const va = (v)=>({ value:v, color:'var(--text)', style:'normal' });
+    const yn = (v)=> v===true?va('Sí'): v===false?va('No'): nv;
+    const detailRows = [
+      { label:'Fuentes', ...va(dt.fuentes) },
+      { label:'Score LLM mínimo', ...va('≥ '+dt.minScore) },
+      { label:'Seniority', ...(dt.seniority&&dt.seniority.length?va(dt.seniority.join(', ')):nv) },
+      { label:'Inglés máximo', ...(dt.english?va(dt.english):nv) },
+      { label:'Solo remoto', ...yn(dt.remote) },
+      { label:'Solo LATAM-friendly', ...yn(dt.latam) },
+      { label:'Excluir residencia UE', ...yn(dt.excludeEU) },
+      { label:'Solo con salario publicado', ...yn(dt.salaryPublished) },
+      { label:'Rango salarial', ...(dt.salaryRange?va(dt.salaryRange):nv) },
+    ];
+    const timeRows = [
+      { label:'Creada', value:x.creada+(x.creadaRel?' · '+x.creadaRel:''), muted:false },
+      { label:'Ejecución programada', value:x.programada, muted:false },
+      { label:'Inicio real', value:x.inicio||'—', muted:!x.inicio },
+      { label:'Fin', value:x.fin||'—', muted:!x.fin },
+      { label:'Duración', value:x.duracion||'—', muted:!x.duracion },
+    ];
+    return { id:x.id, statusLabel:chip.label, chipC:chip.c, chipBg:chip.bg, chipBd:chip.bd, chipDot:chip.dot,
+      isRunningStatus:x.status==='running',
+      nextRel:x.nextRel, metaLine:'Creada '+x.creada+(x.creadaRel?' · '+x.creadaRel:'')+' · programada '+x.programada,
+      shortId:this.shortId(x.runId), runId:x.runId,
+      chips, kwShown, kwMore: kw.length>5 ? '+'+(kw.length-5) : '', hasKwMore: kw.length>5,
+      stageView:sv.view, progressWidth:sv.progressWidth,
+      detailRows, timeRows,
+      isOpen: !!this.state.expanded[x.id], chevron: this.state.expanded[x.id]?'transform:rotate(180deg);transition:transform .2s;display:inline-block;':'transition:transform .2s;display:inline-block;', toggle:()=>this.toggleExpand(x.id) };
+  }
+  buildProg(x){
+    const sv = this.stageView(x.stages);
+    const chip = this.statusChip(x.status);
+    const dt = x.detail;
+    const chips = [];
+    chips.push({ text:'≥ '+dt.minScore, mono:true });
+    if(dt.seniority && dt.seniority.length) chips.push({ text:dt.seniority.join(' · ') });
+    chips.push({ text:'Fuentes: '+dt.fuentes });
+    if(dt.remote) chips.push({ text:'remoto' });
+    if(dt.latam===true) chips.push({ text:'LATAM' });
+    if(dt.excludeEU===true) chips.push({ text:'excluye UE' });
+    if(dt.salaryPublished===true) chips.push({ text:'salario publicado' });
+    const kw = dt.keywords||[];
+    const nv = { value:'No especificado', color:'var(--muted)', style:'italic' };
+    const va = (v)=>({ value:v, color:'var(--text)', style:'normal' });
+    const yn = (v)=> v===true?va('Sí'): v===false?va('No'): nv;
+    const detailRows = [
+      { label:'Fuentes', ...va(dt.fuentes) },
+      { label:'Score LLM mínimo', ...va('≥ '+dt.minScore) },
+      { label:'Seniority', ...(dt.seniority&&dt.seniority.length?va(dt.seniority.join(', ')):nv) },
+      { label:'Inglés máximo', ...(dt.english?va(dt.english):nv) },
+      { label:'Solo remoto', ...yn(dt.remote) },
+      { label:'Solo LATAM-friendly', ...yn(dt.latam) },
+      { label:'Excluir residencia UE', ...yn(dt.excludeEU) },
+      { label:'Solo con salario publicado', ...yn(dt.salaryPublished) },
+      { label:'Rango salarial', ...(dt.salaryRange?va(dt.salaryRange):nv) },
+    ];
+    const timeRows = [
+      { label:'Creada', value:x.creada+(x.creadaRel?' · '+x.creadaRel:'') },
+      { label:'Ejecución programada', value:x.programada },
+      { label:'Inicio real', value:x.inicio||'—' },
+      { label:'Fin', value:x.fin||'—' },
+      { label:'Duración', value:x.duracion||'—' },
+    ];
+    // secondary line: prefer live/relative info
+    const meta = x.nextRel ? x.nextRel : x.whenShort;
+    return { id:x.id, status:x.status, statusLabel:chip.label, chipC:chip.c, chipBg:chip.bg, chipBd:chip.bd, chipDot:chip.dot,
+      isRunningStatus:x.status==='running',
+      trigger:x.trigger, meta, shortId:this.shortId(x.runId), runId:x.runId, railColor:chip.dot,
+      kwShown: kw.slice(0,6), kwMore: kw.length>6 ? '+'+(kw.length-6) : '', hasKwMore: kw.length>6,
+      chips, detailRows, timeRows,
+      stageView:sv.view, progressWidth:sv.progressWidth,
+      isOpen: !!this.state.expanded[x.id], notOpen: !this.state.expanded[x.id],
+      chevron: this.state.expanded[x.id]?'transform:rotate(180deg);transition:transform .2s;display:inline-block;':'transition:transform .2s;display:inline-block;',
+      toggle:()=>this.toggleExpand(x.id) };
+  }
+  setProgFilter = (v)=>{ this.setState({ progFilter:v }); };
+
+  openProfile = ()=>{ this.setState({ route:'profile', profileSaved:false }); window.scrollTo(0,0); };
+  doRefresh = ()=>{ this.setState({ route:'list', listState:'ready', refreshing:true }); };
+  retry = ()=>{ this.setState({ listState:'ready' }); };
+  toggleRaw = ()=>{ this.setState(s=>({ rawExpanded:!s.rawExpanded })); };
+  toggleRelocate = ()=>{ this.setState(s=>({ relocate:!s.relocate })); };
+  addStackRow = ()=>{ this.setState(s=>({ stack:[...s.stack, {name:'',years:''}] })); };
+  submitProfile = ()=>{ this.setState({ profileSaved:true, refreshing:true }); window.scrollTo(0,0); };
+  setListState(v){ this.setState({ route:'list', listState:v, refreshing:false }); window.scrollTo(0,0); }
+
+  // gate
+  onGateInput = (e)=>{ this.setState({ gateUsername:e.target.value }); };
+  doLogin = ()=>{ const n=(this.state.gateUsername||'').trim(); this.setState({ profileId:n||this.state.profileId, route:'list', listState:'ready' }); window.scrollTo(0,0); };
+  quickLogin = ()=>{ this.setState({ profileId:'daniel-2026', route:'list', listState:'ready' }); window.scrollTo(0,0); };
+  createUser = ()=>{ this.setState({ route:'profile', profileSaved:false }); window.scrollTo(0,0); };
+  logout = ()=>{ this.setState({ route:'gate', gateUsername:'' }); window.scrollTo(0,0); };
+
+  // search handlers
+  addKw = ()=>{ const v=(this.state.kwInput||'').trim(); if(!v) return; this.setState(s=>({ search:{...s.search, kw:[...s.search.kw, v]}, kwInput:'' })); };
+  onKwInput = (e)=>{ this.setState({ kwInput:e.target.value }); };
+  onKwKey = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); this.addKw(); } };
+  removeKw = (i)=>{ this.setState(s=>({ search:{...s.search, kw:s.search.kw.filter((_,j)=>j!==i)} })); };
+  seedFromProfile = ()=>{ this.setState(s=>{ const set=new Set([...s.search.kw, ...s.stack.map(r=>r.name).filter(Boolean)]); return { search:{...s.search, kw:[...set]} }; }); };
+  toggleSource = (k)=>{ this.setState(s=>({ search:{...s.search, sources:{...s.search.sources, [k]:!s.search.sources[k]}} })); };
+  onMinScore = (e)=>{ const v=parseInt(e.target.value,10); this.setState(s=>({ search:{...s.search, minScore:v} })); };
+  toggleSearchSeniority = (k)=>{ this.setState(s=>({ search:{...s.search, seniority:{...s.search.seniority, [k]:!s.search.seniority[k]}} })); };
+  toggleFilter = (k)=>{ this.setState(s=>({ search:{...s.search, [k]:!s.search[k]} })); };
+  onSearchSalary = (e)=>{ const v=e.target.value; this.setState(s=>({ search:{...s.search, salary:v} })); };
+  setFreq = (v)=>{ this.setState(s=>({ search:{...s.search, freq:v} })); };
+  scheduleSearch = ()=>{ this.setState({ searchScheduled:true }); window.scrollTo(0,0); };
+
+  renderVals(){
+    const st = this.state;
+    const list = this.matches.map(m=>this.enrichCard(m));
+    const sel = this.matches.find(m=>m.job_id===st.selected);
+    const healthOk = true;
+
+    const segStyle = (active)=> active
+      ? 'height:32px;padding:0 14px;background:var(--accent);border:none;border-radius:8px;color:var(--accent-ink);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;flex:1;'
+      : 'height:32px;padding:0 14px;background:transparent;border:none;border-radius:8px;color:var(--sub);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;flex:1;';
+    const chipStyle = (active)=> active
+      ? 'display:inline-flex;align-items:center;gap:7px;padding:7px 13px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:9px;color:var(--accent-text);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;'
+      : 'display:inline-flex;align-items:center;gap:7px;padding:7px 13px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--sub);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;';
+
+    const seniorityOpts = ['junior','mid','senior','lead','staff'].map(v=>({
+      val:v, label:v.charAt(0).toUpperCase()+v.slice(1), style:segStyle(st.seniority===v), onClick:()=>this.setState({ seniority:v }) }));
+    const modalityOpts = [['remote','Remoto'],['hybrid','Híbrido'],['onsite','Presencial']].map(([v,l])=>({
+      val:v, label:l, style:segStyle(st.modality===v), onClick:()=>this.setState({ modality:v }) }));
+
+    const stackRows = st.stack.map((row,i)=>({ name:row.name, years:row.years,
+      onName:(e)=>{ const val=e.target.value; this.setState(s=>{ const c=[...s.stack]; c[i]={...c[i],name:val}; return {stack:c}; }); },
+      onYears:(e)=>{ const val=e.target.value; this.setState(s=>{ const c=[...s.stack]; c[i]={...c[i],years:val}; return {stack:c}; }); },
+      remove:()=>this.setState(s=>({ stack:s.stack.filter((_,j)=>j!==i) })) }));
+
+    const onField = {
+      id:(e)=>this.setState({ profileId:e.target.value }),
+      summary:(e)=>this.setState({ summary:e.target.value.slice(0,2000) }),
+      english:(e)=>this.setState({ english:e.target.value }),
+      location:(e)=>this.setState({ location:e.target.value }),
+      salary:(e)=>this.setState({ salary:e.target.value }),
+    };
+
+    // search view models
+    const sr = st.search;
+    const kwChips = sr.kw.map((name,i)=>({ name, remove:()=>this.removeKw(i) }));
+    const sourceOpts = [['himalayas','Himalayas','var(--src-him-dot)'],['remotive','Remotive','var(--src-rem-dot)']].map(([k,l,dot])=>({
+      label:l, dot:dot, style:chipStyle(sr.sources[k]), onClick:()=>this.toggleSource(k) }));
+    const searchSeniorityOpts = ['junior','mid','senior','lead','staff'].map(k=>({
+      label:k.charAt(0).toUpperCase()+k.slice(1), style:chipStyle(sr.seniority[k]), onClick:()=>this.toggleSearchSeniority(k) }));
+    const filterToggles = [
+      { key:'remote', label:'Solo remoto', hint:'Excluir presencial e híbrido', val:sr.remote },
+      { key:'latam', label:'Solo LATAM-friendly', hint:'Ofertas abiertas a Latinoamérica', val:sr.latam },
+      { key:'excludeEU', label:'Excluir residencia UE', hint:'Descarta ofertas que exigen residir en la UE', val:sr.excludeEU },
+    ].map(f=>({ label:f.label, hint:f.hint, track: f.val?'var(--accent)':'var(--border3)', knob: f.val?'18px':'2px', onClick:()=>this.toggleFilter(f.key) }));
+    const freqOpts = [['6h','6 h'],['12h','12 h'],['24h','24 h'],['manual','Manual']].map(([v,l])=>({
+      label:l, style:segStyle(sr.freq===v), onClick:()=>this.setFreq(v) }));
+    const mc = this.scoreColors(sr.minScore);
+
+    // demo switcher
+    const dbtn = (active)=> active
+      ? 'height:26px;padding:0 10px;background:var(--border3);border:1px solid var(--border3);border-radius:7px;color:var(--text);font-family:inherit;font-size:11px;font-weight:500;cursor:pointer;'
+      : 'height:26px;padding:0 10px;background:transparent;border:1px solid transparent;border-radius:7px;color:var(--sub);font-family:inherit;font-size:11px;font-weight:500;cursor:pointer;';
+    const demoBtns = [
+      { label:'Login', style:dbtn(st.route==='gate'), onClick:this.logout },
+      { label:'Lista', style:dbtn(st.route==='list'&&st.listState==='ready'), onClick:()=>this.setListState('ready') },
+      { label:'Detalle', style:dbtn(st.route==='detail'&&st.selected!=='z6a7b8c9d0'), onClick:()=>this.openDetail('a1b2c3d4e5') },
+      { label:'Sin score', style:dbtn(st.route==='detail'&&st.selected==='z6a7b8c9d0'), onClick:()=>this.openDetail('z6a7b8c9d0') },
+      { label:'Buscar', style:dbtn(st.route==='search'), onClick:this.goSearch },
+      { label:'Programaciones', style:dbtn(st.route==='schedules'), onClick:this.goSchedules },
+      { label:'Perfil', style:dbtn(st.route==='profile'), onClick:this.openProfile },
+      { label:'Loading', style:dbtn(st.route==='list'&&st.listState==='loading'), onClick:()=>this.setListState('loading') },
+      { label:'Vacío', style:dbtn(st.route==='list'&&st.listState==='empty'), onClick:()=>this.setListState('empty') },
+      { label:'Error', style:dbtn(st.route==='list'&&st.listState==='error'), onClick:()=>this.setListState('error') },
+    ];
+
+    const navBase = 'height:32px;padding:0 12px;background:transparent;border:none;border-radius:8px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;';
+    const navActive = navBase+'color:var(--text);background:var(--panel2);';
+    const navIdle = navBase+'color:var(--sub);';
+
+    return {
+      // theme
+      themeDark: st.theme==='dark', themeLight: st.theme==='light', toggleTheme:this.toggleTheme,
+      // routing
+      isGate: st.route==='gate', showChrome: st.route!=='gate',
+      isList: st.route==='list', isDetail: st.route==='detail', isProfile: st.route==='profile', isSearch: st.route==='search', isSchedules: st.route==='schedules',
+      navMatchesStyle: (st.route==='list'||st.route==='detail')?navActive:navIdle,
+      navSearchStyle: (st.route==='search')?navActive:navIdle,
+      navSchedStyle: (st.route==='schedules')?navActive:navIdle,
+      goSchedules:this.goSchedules,
+      progFilterTabs: [['all','Todas'],['active','Activas'],['done','Finalizadas']].map(([v,l])=>{
+        const active = st.progFilter===v;
+        return { label:l, onClick:()=>this.setProgFilter(v),
+          style: active
+            ? 'height:30px;padding:0 14px;background:var(--accent);border:none;border-radius:8px;color:var(--accent-ink);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;'
+            : 'height:30px;padding:0 14px;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--sub);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;' };
+      }),
+      programaciones: this.programaciones.filter(x=>{
+        if(st.progFilter==='active') return x.status==='queued'||x.status==='running';
+        if(st.progFilter==='done') return x.status==='success'||x.status==='failed';
+        return true;
+      }).map(x=>this.buildProg(x)),
+      progCount: this.programaciones.length,
+      runningCount: this.programaciones.filter(r=>r.status==='running').length,
+      queuedCount: this.programaciones.filter(r=>r.status==='queued').length,
+      // gate
+      gateUsername: st.gateUsername, onGateInput:this.onGateInput, doLogin:this.doLogin, quickLogin:this.quickLogin, createUser:this.createUser, logout:this.logout,
+      // header
+      profileId: st.profileId,
+      healthDot: healthOk ? 'var(--sc-green-fg)' : 'var(--sc-amber-fg)',
+      healthLabel: healthOk ? 'Sistema OK' : 'Degradado',
+      healthTip: healthOk ? 'status: ok · db: ✓ · gemini: ✓ · gemini-2.0-flash' : 'status: degraded',
+      refreshLabel: st.refreshing ? 'Refrescando…' : 'Refresh',
+      refreshSpin: st.refreshing ? 'animation:jm-spin 1s linear infinite;' : '',
+      // list
+      refreshing: st.refreshing, viewMatches: list,
+      countLabel: list.length+' ofertas · ordenadas por relevancia',
+      attribution: 'Jobs via Himalayas (himalayas.app) and Remotive (remotive.com). Original postings linked in each match.',
+      skeletons: [1,2,3,4],
+      showReady: st.listState==='ready', showLoading: st.listState==='loading', showEmpty: st.listState==='empty',
+      showError: st.listState==='error', showOnboard: st.listState==='onboard',
+      // detail
+      detailReady: !!sel, detailMissing: !sel, d: sel ? this.buildDetail(sel) : {},
+      rawExpanded: st.rawExpanded, rawToggleLabel: st.rawExpanded ? 'Ocultar' : 'Mostrar',
+      rawChevron: st.rawExpanded ? 'transform:rotate(180deg);transition:transform .2s;display:inline-block;' : 'transition:transform .2s;display:inline-block;',
+      // search
+      searchScheduled: st.searchScheduled, kwChips, kwInput: st.kwInput,
+      onKwInput:this.onKwInput, onKwKey:this.onKwKey, addKw:this.addKw, seedFromProfile:this.seedFromProfile,
+      sourceOpts, minScore: sr.minScore, onMinScore:this.onMinScore,
+      minScoreFg:mc.fg, minScoreBg:mc.bg, minScoreBorder:mc.border,
+      searchSeniorityOpts, filterToggles, searchSalary: sr.salary, onSearchSalary:this.onSearchSalary,
+      freqOpts, scheduleSearch:this.scheduleSearch,
+      // profile
+      summary: st.summary, summaryCount: st.summary.length,
+      summaryCountColor: st.summary.length>1900 ? 'var(--sc-amber-fg)' : 'var(--muted)',
+      seniorityOpts, modalityOpts, stackRows, englishOpts: ['A1','A2','B1','B2','C1','C2','native'],
+      english: st.english, location: st.location, salary: st.salary,
+      relocate: st.relocate, relocateTrack: st.relocate ? 'var(--accent)' : 'var(--border3)',
+      relocateKnob: st.relocate ? '16px' : '2px', relocateLabel: st.relocate ? 'Sí' : 'No',
+      profileSaved: st.profileSaved, onField,
+      // handlers
+      goList:this.goList, goSearch:this.goSearch, openProfile:this.openProfile, doRefresh:this.doRefresh,
+      retry:this.retry, toggleRaw:this.toggleRaw, toggleRelocate:this.toggleRelocate,
+      addStackRow:this.addStackRow, submitProfile:this.submitProfile,
+      demoBtns,
+    };
+  }
+}
+</script>
+</body>
+</html>

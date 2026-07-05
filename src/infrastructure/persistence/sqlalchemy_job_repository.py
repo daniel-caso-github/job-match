@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select, true
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -69,6 +69,22 @@ class SqlAlchemyJobRepository(JobRepository):
         if model is None:
             raise LookupError(f"Job {job_id} not found")
         model.embedding = vec
+
+    def list_stack_technologies(self, limit: int = 30) -> list[str]:
+        tech = (
+            func.jsonb_array_elements_text(JobModel.requirements["stack"])
+            .table_valued("value")
+            .lateral()
+        )
+        stmt = (
+            select(tech.c.value)
+            .select_from(JobModel)
+            .join(tech, true())
+            .group_by(tech.c.value)
+            .order_by(func.count().desc(), tech.c.value)
+            .limit(limit)
+        )
+        return list(self._session.execute(stmt).scalars())
 
     def semantic_top_k(
         self,

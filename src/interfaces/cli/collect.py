@@ -18,12 +18,22 @@ from src.infrastructure.persistence.database import session_scope
 from src.infrastructure.persistence.sqlalchemy_job_repository import (
     SqlAlchemyJobRepository,
 )
+from src.infrastructure.sources.adzuna import AdzunaSource
+from src.infrastructure.sources.arbeitnow import ArbeitnowSource
 from src.infrastructure.sources.himalayas import HimalayasSource
+from src.infrastructure.sources.jobicy import JobicySource
+from src.infrastructure.sources.jooble import JoobleSource
+from src.infrastructure.sources.remoteok import RemoteOkSource
 from src.infrastructure.sources.remotive import RemotiveSource
 
 SOURCE_REGISTRY: dict[str, type[JobSource]] = {
     "himalayas": HimalayasSource,
     "remotive": RemotiveSource,
+    "jobicy": JobicySource,
+    "remoteok": RemoteOkSource,
+    "arbeitnow": ArbeitnowSource,
+    "adzuna": AdzunaSource,
+    "jooble": JoobleSource,
 }
 
 

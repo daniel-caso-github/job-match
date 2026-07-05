@@ -17,13 +17,16 @@ from src.domain.value_objects.job_requirements import (
     JobRequirements,
     Seniority,
 )
+from src.domain.value_objects.match_filters import MatchFilters
 from src.domain.value_objects.profile_form import ProfileForm, TechItem
 from src.domain.value_objects.verdict import Verdict
+
+FAKE_PROFILE_ID = "11111111-1111-1111-1111-111111111111"
 
 
 def _profile_form() -> ProfileForm:
     return ProfileForm(
-        id="daniel",
+        username="daniel",
         stack=[TechItem(name="Python", years=8)],
         seniority=Seniority.senior,
         english_level=EnglishLevel.b2,
@@ -55,23 +58,30 @@ class _StubScorer(LlmScorer):
         self._score = score_value
         self.calls = 0
 
-    def score(self, profile, requirements) -> Verdict:
+    def score(self, profile, job) -> Verdict:
         self.calls += 1
         return Verdict(score=self._score, strengths=["match"], risks=[])
 
 
 class _InMemoryProfileRepo(ProfileRepository):
     def __init__(self):
-        self.upserts: list[tuple[str, dict]] = []
+        self.upserts: list[ProfileForm] = []
         self.embeddings: dict[str, list[float]] = {}
 
-    def upsert(self, profile_id: str, form_data: dict[str, Any]) -> None:
-        self.upserts.append((profile_id, form_data))
+    def upsert(self, form: ProfileForm) -> str:
+        self.upserts.append(form)
+        return FAKE_PROFILE_ID
 
     def update_embedding(self, profile_id: str, vec: list[float]) -> None:
         self.embeddings[profile_id] = vec
 
     def get(self, profile_id: str) -> Profile | None:
+        return None
+
+    def get_by_username(self, username: str) -> Profile | None:
+        return None
+
+    def get_by_email(self, email: str) -> Profile | None:
         return None
 
     def list_all(self) -> list[Profile]:
@@ -107,6 +117,9 @@ class _InMemoryJobRepo(JobRepository):
 
     def update_embedding(self, job_id: str, vec: list[float]) -> None:
         pass
+
+    def list_stack_technologies(self, limit: int = 30) -> list[str]:
+        return []
 
     def semantic_top_k(
         self,
@@ -144,7 +157,7 @@ class _InMemoryMatchRepo(MatchRepository):
         }
 
     def top_for_profile(
-        self, profile_id: str, limit: int = 20
+        self, profile_id: str, limit: int = 20, filters: MatchFilters | None = None
     ) -> list[tuple[Match, Job]]:
         return []
 
@@ -152,6 +165,11 @@ class _InMemoryMatchRepo(MatchRepository):
         self, profile_id: str, job_id: str
     ) -> tuple[Match, Job] | None:
         return None
+
+    def count_for_profile(
+        self, profile_id: str, filters: MatchFilters | None = None
+    ) -> int:
+        return sum(1 for (pid, _) in self.matches if pid == profile_id)
 
 
 def _requirements() -> JobRequirements:
@@ -176,12 +194,12 @@ def test_scores_every_candidate_and_upserts_match():
 
     assert n == 2
     assert scorer.calls == 2
-    assert profile_repo.upserts == [(form.id, form.model_dump(mode="json"))]
-    assert profile_repo.embeddings[form.id] == [0.1] * 384
-    assert set(match_repo.matches.keys()) == {(form.id, "a"), (form.id, "b")}
-    assert match_repo.matches[(form.id, "a")]["semantic_score"] == 0.81
-    assert match_repo.matches[(form.id, "a")]["llm_score"] == 80
-    assert match_repo.matches[(form.id, "a")]["verdict"]["strengths"] == ["match"]
+    assert profile_repo.upserts == [form]
+    assert profile_repo.embeddings[FAKE_PROFILE_ID] == [0.1] * 384
+    assert set(match_repo.matches.keys()) == {(FAKE_PROFILE_ID, "a"), (FAKE_PROFILE_ID, "b")}
+    assert match_repo.matches[(FAKE_PROFILE_ID, "a")]["semantic_score"] == 0.81
+    assert match_repo.matches[(FAKE_PROFILE_ID, "a")]["llm_score"] == 80
+    assert match_repo.matches[(FAKE_PROFILE_ID, "a")]["verdict"]["strengths"] == ["match"]
 
 
 def test_skips_jobs_without_requirements():
@@ -201,7 +219,7 @@ def test_skips_jobs_without_requirements():
 
     assert n == 1
     assert scorer.calls == 1
-    assert set(match_repo.matches.keys()) == {(form.id, "b")}
+    assert set(match_repo.matches.keys()) == {(FAKE_PROFILE_ID, "b")}
 
 
 def test_idempotent_second_run_does_not_double_score():
@@ -248,3 +266,31 @@ def test_no_candidates_returns_zero_without_calling_scorer():
     assert n == 0
     assert scorer.calls == 0
     assert match_repo.matches == {}
+
+
+def test_guardrail_caps_score_and_filters_strengths_when_non_tech_job():
+    form = _profile_form()  # profile has Python in stack
+    non_tech_req = JobRequirements(stack=[], confidence=0.9)
+    job = _job("support-1", non_tech_req)
+    job_repo = _InMemoryJobRepo([job], [("support-1", 0.80)])
+    match_repo = _InMemoryMatchRepo()
+
+    class _HallucinatingScorer(LlmScorer):
+        def score(self, profile, job) -> Verdict:
+            return Verdict(
+                score=85,
+                strengths=["Python expertise matches perfectly", "Remote work available"],
+                risks=[],
+            )
+
+    ScoreProfileUseCase(
+        embedder=_StubEmbedder(),
+        llm_scorer=_HallucinatingScorer(),
+        profile_repository=_InMemoryProfileRepo(),
+        job_repository=job_repo,
+        match_repository=match_repo,
+    ).execute(form)
+
+    stored = match_repo.matches[(FAKE_PROFILE_ID, "support-1")]
+    assert stored["llm_score"] <= 30
+    assert not any("python" in s.lower() for s in stored["verdict"]["strengths"])

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
+from src.domain.entities.job import Job
 from src.domain.value_objects.job_requirements import (
     EnglishLevel,
     JobRequirements,
@@ -30,7 +31,7 @@ def _mock_response(payload: dict | str) -> MagicMock:
 
 def _profile() -> ProfileForm:
     return ProfileForm(
-        id="d",
+        username="d",
         stack=[TechItem(name="Python", years=8), TechItem(name="FastAPI", years=3)],
         seniority=Seniority.senior,
         english_level=EnglishLevel.b2,
@@ -49,6 +50,17 @@ def _requirements() -> JobRequirements:
     )
 
 
+def _job() -> Job:
+    return Job.model_validate({
+        "id": "abc",
+        "source": "himalayas",
+        "url": "https://x.com/j/1",
+        "title": "Senior Backend Engineer",
+        "raw_text": "We need Python and FastAPI experience.",
+        "requirements": _requirements().model_dump(mode="json"),
+    })
+
+
 def test_score_happy_path():
     payload = {
         "score": 88,
@@ -57,7 +69,7 @@ def test_score_happy_path():
     }
     scorer = GeminiScorer()
     with patch.object(scorer, "_generate", return_value=_mock_response(payload)):
-        v = scorer.score(_profile(), _requirements())
+        v = scorer.score(_profile(), _job())
 
     assert isinstance(v, Verdict)
     assert v.score == 88
@@ -73,7 +85,7 @@ def test_score_invalid_then_repaired():
     with patch.object(
         scorer, "_generate", side_effect=[_mock_response(bad), _mock_response(good)]
     ) as mock_gen:
-        v = scorer.score(_profile(), _requirements())
+        v = scorer.score(_profile(), _job())
 
     assert mock_gen.call_count == 2
     assert v.score == 70
@@ -84,7 +96,7 @@ def test_score_fails_returns_neutral():
     garbage = _mock_response("not json at all")
     scorer = GeminiScorer()
     with patch.object(scorer, "_generate", return_value=garbage):
-        v = scorer.score(_profile(), _requirements())
+        v = scorer.score(_profile(), _job())
 
     assert isinstance(v, Verdict)
     assert v.score == 50

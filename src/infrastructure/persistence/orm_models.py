@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import Any
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Boolean, Float, ForeignKey, Index, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
+from sqlalchemy import Boolean, Float, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -52,8 +52,25 @@ class JobModel(Base):
 class ProfileModel(Base):
     __tablename__ = "profiles"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    form_data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String)
+    first_name: Mapped[str | None] = mapped_column(String(80))
+    last_name: Mapped[str | None] = mapped_column(String(80))
+    email: Mapped[str | None] = mapped_column(String(254), unique=True)
+    seniority: Mapped[str] = mapped_column(String, nullable=False)
+    english_level: Mapped[str] = mapped_column(String, nullable=False)
+    location: Mapped[str] = mapped_column(String, nullable=False)
+    willing_to_relocate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    modality: Mapped[str] = mapped_column(String, nullable=False, default="remote")
+    salary_min: Mapped[int | None] = mapped_column(Integer)
+    salary_max: Mapped[int | None] = mapped_column(Integer)
+    salary_currency: Mapped[str | None] = mapped_column(String(3))
+    summary: Mapped[str | None] = mapped_column(Text)
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
@@ -62,8 +79,52 @@ class ProfileModel(Base):
         nullable=False,
     )
 
+    skills: Mapped[list[ProfileSkillModel]] = relationship(
+        back_populates="profile", cascade="all, delete-orphan"
+    )
     matches: Mapped[list[MatchModel]] = relationship(
         back_populates="profile", cascade="all, delete-orphan"
+    )
+
+
+class SkillModel(Base):
+    __tablename__ = "skills"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
+
+
+class ProfileSkillModel(Base):
+    __tablename__ = "profile_skills"
+
+    profile_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True
+    )
+    skill_id: Mapped[int] = mapped_column(
+        ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True
+    )
+    years: Mapped[float] = mapped_column(Float, nullable=False)
+
+    profile: Mapped[ProfileModel] = relationship(back_populates="skills")
+    skill: Mapped[SkillModel] = relationship()
+
+
+class SavedSearchModel(Base):
+    __tablename__ = "saved_searches"
+
+    dag_run_id: Mapped[str] = mapped_column(String, primary_key=True)
+    profile_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False
+    )
+    filters: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    run_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    match_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    __table_args__ = (
+        Index("saved_searches_profile_created", "profile_id", "created_at"),
     )
 
 
@@ -71,7 +132,7 @@ class MatchModel(Base):
     __tablename__ = "matches"
 
     profile_id: Mapped[str] = mapped_column(
-        ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True
+        UUID(as_uuid=False), ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True
     )
     job_id: Mapped[str] = mapped_column(
         ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True

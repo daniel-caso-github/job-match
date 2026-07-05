@@ -20,6 +20,16 @@ class Settings:
     embedding_model: str
     semantic_threshold: float
     top_k_for_llm: int
+    adzuna_app_id: str | None
+    adzuna_app_key: str | None
+    adzuna_country: str
+    jooble_api_key: str | None
+    airflow_api_url: str
+    airflow_api_user: str
+    airflow_api_password: str
+    jwt_secret: str
+    jwt_algorithm: str
+    access_token_expire_minutes: int
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -33,6 +43,20 @@ class Settings:
             embedding_model=os.environ.get("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"),
             semantic_threshold=float(os.environ.get("SEMANTIC_THRESHOLD", "0.65")),
             top_k_for_llm=int(os.environ.get("TOP_K_FOR_LLM", "30")),
+            adzuna_app_id=os.environ.get("ADZUNA_APP_ID"),
+            adzuna_app_key=os.environ.get("ADZUNA_APP_KEY"),
+            adzuna_country=os.environ.get("ADZUNA_COUNTRY", "gb"),
+            jooble_api_key=os.environ.get("JOOBLE_API_KEY"),
+            airflow_api_url=os.environ.get(
+                "AIRFLOW_API_URL", "http://airflow-webserver:8080"
+            ),
+            airflow_api_user=os.environ.get("AIRFLOW_API_USER", "admin"),
+            airflow_api_password=os.environ.get("AIRFLOW_API_PASSWORD", "admin"),
+            jwt_secret=os.environ.get("JWT_SECRET", "dev-secret-change-in-production-32b"),
+            jwt_algorithm=os.environ.get("JWT_ALGORITHM", "HS256"),
+            access_token_expire_minutes=int(
+                os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")
+            ),
         )
 
 

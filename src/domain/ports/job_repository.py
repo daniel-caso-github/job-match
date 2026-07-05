@@ -34,6 +34,11 @@ class JobRepository(ABC):
     def update_embedding(self, job_id: str, vec: list[float]) -> None: ...
 
     @abstractmethod
+    def list_stack_technologies(self, limit: int = 30) -> list[str]:
+        """Tecnologías distintas de `requirements.stack`, ordenadas por frecuencia desc."""
+        ...
+
+    @abstractmethod
     def semantic_top_k(
         self,
         embedding: list[float],

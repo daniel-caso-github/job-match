@@ -10,7 +10,9 @@ from collections.abc import Iterator
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from src.domain.ports.embedder import Embedder
@@ -19,11 +21,13 @@ from src.domain.ports.llm_scorer import LlmScorer
 from src.domain.ports.match_repository import MatchRepository
 from src.domain.ports.profile_repository import ProfileRepository
 from src.domain.ports.requirements_extractor import RequirementsExtractor
+from src.domain.ports.saved_search_repository import SavedSearchRepository
 from src.infrastructure.embedding.sentence_transformers_embedder import (
     SentenceTransformersEmbedder,
 )
 from src.infrastructure.llm.gemini_extractor import GeminiExtractor
 from src.infrastructure.llm.gemini_scorer import GeminiScorer
+from src.infrastructure.orchestration.airflow_client import AirflowClient
 from src.infrastructure.persistence.database import SessionLocal
 from src.infrastructure.persistence.sqlalchemy_job_repository import (
     SqlAlchemyJobRepository,
@@ -34,6 +38,10 @@ from src.infrastructure.persistence.sqlalchemy_match_repository import (
 from src.infrastructure.persistence.sqlalchemy_profile_repository import (
     SqlAlchemyProfileRepository,
 )
+from src.infrastructure.persistence.sqlalchemy_saved_search_repository import (
+    SqlAlchemySavedSearchRepository,
+)
+from src.infrastructure.security import decode_access_token
 
 
 def get_session() -> Iterator[Session]:
@@ -59,6 +67,10 @@ def get_match_repository(session: SessionDep) -> MatchRepository:
     return SqlAlchemyMatchRepository(session)
 
 
+def get_saved_search_repository(session: SessionDep) -> SavedSearchRepository:
+    return SqlAlchemySavedSearchRepository(session)
+
+
 def get_requirements_extractor() -> RequirementsExtractor:
     return GeminiExtractor()
 
@@ -77,6 +89,34 @@ def get_llm_scorer() -> LlmScorer:
     return GeminiScorer()
 
 
+def get_airflow_client() -> AirflowClient:
+    return AirflowClient()
+
+
+class TokenData(BaseModel):
+    profile_id: str
+    username: str
+
+
+_bearer = HTTPBearer()
+
+
+def get_current_profile(
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(_bearer)],
+) -> TokenData:
+    try:
+        payload = decode_access_token(credentials.credentials)
+        return TokenData(profile_id=payload["sub"], username=payload["username"])
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="token inválido o expirado",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from None
+
+
+CurrentProfileDep = Annotated[TokenData, Depends(get_current_profile)]
+
 JobRepositoryDep = Annotated[JobRepository, Depends(get_job_repository)]
 ProfileRepositoryDep = Annotated[ProfileRepository, Depends(get_profile_repository)]
 MatchRepositoryDep = Annotated[MatchRepository, Depends(get_match_repository)]
@@ -85,3 +125,7 @@ RequirementsExtractorDep = Annotated[
 ]
 EmbedderDep = Annotated[Embedder, Depends(get_embedder)]
 LlmScorerDep = Annotated[LlmScorer, Depends(get_llm_scorer)]
+AirflowClientDep = Annotated[AirflowClient, Depends(get_airflow_client)]
+SavedSearchRepositoryDep = Annotated[
+    SavedSearchRepository, Depends(get_saved_search_repository)
+]
