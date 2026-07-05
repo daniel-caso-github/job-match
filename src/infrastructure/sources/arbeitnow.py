@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -80,7 +80,7 @@ class ArbeitnowSource(JobSource):
         ts = j.get("created_at")
         if ts is not None:
             try:
-                posted_at = datetime.fromtimestamp(int(ts), tz=timezone.utc)
+                posted_at = datetime.fromtimestamp(int(ts), tz=UTC)
             except (ValueError, OSError, TypeError):
                 posted_at = None
 

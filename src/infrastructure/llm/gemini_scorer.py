@@ -14,7 +14,11 @@ from src.domain.ports.llm_scorer import LlmScorer
 from src.domain.value_objects.profile_form import ProfileForm
 from src.domain.value_objects.verdict import Verdict
 from src.infrastructure.config import settings
-from src.infrastructure.metrics import gemini_request_duration, gemini_requests_total, llm_score_histogram
+from src.infrastructure.metrics import (
+    gemini_request_duration,
+    gemini_requests_total,
+    llm_score_histogram,
+)
 
 logger = logging.getLogger(__name__)
 

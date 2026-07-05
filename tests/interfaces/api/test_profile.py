@@ -5,8 +5,8 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from src.domain.entities.profile import Profile
+from src.domain.value_objects.job_requirements import EnglishLevel, Seniority
 from src.domain.value_objects.profile_form import ProfileForm
-from src.domain.value_objects.job_requirements import Seniority, EnglishLevel
 from tests.interfaces.api.conftest import FAKE_PROFILE_ID, ApiContext
 
 

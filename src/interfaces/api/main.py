@@ -4,16 +4,16 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.interfaces.api.dependencies import _embedder_singleton
 from src.interfaces.api.routers import auth, health, jobs, matches, profile
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 
 @asynccontextmanager

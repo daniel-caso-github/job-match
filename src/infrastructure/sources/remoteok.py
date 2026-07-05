@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -78,15 +79,13 @@ class RemoteOkSource(JobSource):
         posted_at: datetime | None = None
         date_str = j.get("date")
         if date_str:
-            try:
+            with contextlib.suppress(ValueError):
                 posted_at = datetime.fromisoformat(str(date_str).replace("Z", "+00:00"))
-            except ValueError:
-                pass
         if posted_at is None:
             epoch = j.get("epoch")
             if epoch:
                 try:
-                    posted_at = datetime.fromtimestamp(int(epoch), tz=timezone.utc)
+                    posted_at = datetime.fromtimestamp(int(epoch), tz=UTC)
                 except (ValueError, OSError):
                     posted_at = None
 

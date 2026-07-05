@@ -5,11 +5,9 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
-from src.domain.value_objects.profile_form import _EMAIL_RE
-
 from src.application.use_cases.score_profile import ScoreProfileUseCase
 from src.domain.value_objects.job_requirements import EnglishLevel, Seniority
-from src.domain.value_objects.profile_form import ProfileForm
+from src.domain.value_objects.profile_form import _EMAIL_RE, ProfileForm
 from src.infrastructure.llm.gemini_scorer import GeminiScorer
 from src.infrastructure.persistence.database import session_scope
 from src.infrastructure.persistence.sqlalchemy_job_repository import (
