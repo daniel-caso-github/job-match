@@ -11,6 +11,6 @@ __pycache__/
 htmlcov/
 .DS_Store
 .env
-docs/
+.claude/docs/
 README.md
 *.docx

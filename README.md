@@ -6,9 +6,6 @@
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
 
-<!-- Reemplazar con captura real antes de publicar -->
-![UI demo](docs/img/ui-demo.png)
-
 ---
 
 ## ¿Qué resuelve?
@@ -66,8 +63,13 @@ Ver [`frontend/README.md`](frontend/README.md) para la arquitectura del frontend
 |---|---|---|
 | [Himalayas](https://himalayas.app/) | API JSON pública | filtros por keyword, country, seniority |
 | [Remotive](https://remotive.com/) | API JSON oficial (`/api/remote-jobs`) | software-dev, devops, design |
+| [Jobicy](https://jobicy.com/) | API JSON pública (`/api/v2/remote-jobs`) | remoto, con geo/industry |
+| [RemoteOK](https://remoteok.com/) | API JSON pública (`/api`) | tech remoto, tags |
+| [Arbeitnow](https://www.arbeitnow.com/) | API JSON pública (`/api/job-board-api`) | sin key, remoto EU/global |
+| [Adzuna](https://www.adzuna.com/) | API JSON (key gratuita) | agregador multi-país; requiere `ADZUNA_APP_ID`/`ADZUNA_APP_KEY` |
+| [Jooble](https://jooble.org/) | API JSON (key gratuita) | agregador; requiere `JOOBLE_API_KEY` |
 
-Atribución obligatoria por términos de uso. **No se redistribuyen ofertas a terceros**; el sistema es de uso personal y enlaza siempre al posting original. Frecuencia de fetch: cada 12 horas, muy por debajo del límite de las fuentes.
+Recolección con `--source all`; las fuentes que requieren key se omiten automáticamente si no está configurada. Atribución obligatoria por términos de uso. **No se redistribuyen ofertas a terceros**; el sistema es de uso personal y enlaza siempre al posting original. Frecuencia de fetch: cada 12 horas, muy por debajo del límite de las fuentes.
 
 ---
 
@@ -155,9 +157,6 @@ docker compose up -d airflow-webserver airflow-scheduler
 
 Accedé a <http://127.0.0.1:8080> con `admin/admin`, habilitá el DAG `job_match` y disparalo manualmente la primera vez.
 
-<!-- Reemplazar con captura real antes de publicar -->
-![Airflow DAG](docs/img/airflow-dag.png)
-
 ---
 
 ## API
@@ -198,9 +197,6 @@ SPA React que consume la API y muestra matches con veredicto, filtros, drawer de
 
 Ver [`frontend/README.md`](frontend/README.md) para stack, rutas, estructura y cómo extender.
 
-<!-- Reemplazar con captura real antes de publicar -->
-![Lista de matches](docs/img/matches-list.png)
-
 ---
 
 ## Observabilidad
@@ -236,21 +232,6 @@ Tests offline-first (mocks via `unittest.mock.patch` e `app.dependency_overrides
 
 ---
 
-## Decisiones de diseño
-
-Cada fase tiene su doc con decisiones, schemas y criterios de aceptación:
-
-- [00 · Overview transversal](docs/00-overview.md)
-- [Fase 1 · Recolección](docs/phase-1-recoleccion.md)
-- [Fase 2 · Extracción Gemini](docs/phase-2-extraccion.md)
-- [Fase 3 · Matching (embeddings + scoring)](docs/phase-3-matching.md)
-- [Fase 4 · API + Perfil](docs/phase-4-api-perfil.md)
-- [Fase 5 · Orquestación Airflow](docs/phase-5-orquestacion.md)
-- [Fase 6 · README + demo](docs/phase-6-readme-demo.md)
-- [Frontend · Overview](docs/frontend/00-overview.md)
-
----
-
 ## Disclaimers
 
 - El `llm_score` y los riesgos son **orientativos**. La decisión final de postular es del usuario; el sistema reduce la lista, no decide por vos.
@@ -266,11 +247,6 @@ MIT — ver [LICENSE](LICENSE).
 <!--
 CHECKLIST PRE-PUBLICACIÓN (completar antes de hacer el repo público)
 ====================================================================
-Capturas (guardar en docs/img/, ≤200 KB cada una, usar pngquant/tinypng):
-  [ ] docs/img/ui-demo.png      — pantalla principal con lista de matches
-  [ ] docs/img/matches-list.png — sidebar de filtros + cards
-  [ ] docs/img/airflow-dag.png  — Graph view del DAG job_match con tasks en verde
-
 Videos (subir a YouTube no listado, pegar URLs en sección Demo):
   [ ] Video 1 — Pipeline (≤2 min): docker compose up → Airflow → trigger → logs → psql count
   [ ] Video 2 — Matches (≤2 min): registro → login → POST /jobs/refresh → UI con matches + detalle

@@ -40,7 +40,7 @@ Thumbs.db
 # Claude Code — no versionar nada de Claude
 .claude/
 CLAUDE.md
-claude_design/
+.claude/claude_design/
 
 # Data
 *.sqlite3

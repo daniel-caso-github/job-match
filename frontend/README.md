@@ -1,6 +1,8 @@
 # Job Match — Frontend
 
 > SPA React que consume la API de Job Match Pipeline y muestra matches con veredicto, filtros avanzados, drawer de detalle y programación de búsquedas.
+>
+> Parte de [Job Match Pipeline](../README.md) — ver el README raíz para arquitectura backend, pipeline y quickstart.
 
 ---
 
@@ -156,4 +158,3 @@ La sesión (`profileId`, `username`, `token`) se persiste en `localStorage["jobm
 - Sin lógica en componentes de página — extraída a `lib/` y `hooks/`.
 - `profileId` siempre via `useProfile()`, nunca leer `localStorage` directamente en un componente.
 - Atribución de fuentes obligatoria: `<SourceAttribution>` en lista y drawer.
-- Los docs de fases en `docs/frontend/` describen el diseño incremental pero su inventario de archivos está desactualizado; este README es la referencia vigente.
