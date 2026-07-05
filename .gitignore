@@ -37,8 +37,10 @@ Thumbs.db
 .env.local
 *.secret
 
-# Claude Code: skills + CLAUDE.md se versionan; settings.local.json es por dev
-.claude/settings.local.json
+# Claude Code — no versionar nada de Claude
+.claude/
+CLAUDE.md
+claude_design/
 
 # Data
 *.sqlite3
