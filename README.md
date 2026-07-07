@@ -1,18 +1,18 @@
 # Job Match Pipeline
 
-> Clasificador y scoring de ofertas de empleo según un perfil profesional.
-> Recolección legal → extracción estructurada (Gemini) → embeddings → scoring con fortalezas y riesgos explicados → UI React.
+> Job offer classifier and scorer against a professional profile.
+> Legal collection → structured extraction (Gemini) → embeddings → scoring with explained strengths and risks → React UI.
 
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
-## ¿Qué resuelve?
+## What problem does it solve?
 
-Postular bien es caro: implica leer cientos de ofertas, intuir si encajan con tu perfil, filtrar por seniority y stack reales, y descartar las que piden residencia que no tenés. Este proyecto automatiza ese filtrado: cada 12 horas recolecta ofertas de fuentes legales, extrae sus requisitos a un schema tipado, y produce un ranking explicado para tu perfil.
+Applying well is expensive: it means reading hundreds of job postings, guessing whether they fit your profile, filtering by real seniority and stack, and discarding ones that require residency you don't have. This project automates that filtering: every 12 hours it collects job offers from legal sources, extracts their requirements into a typed schema, and produces an explained ranking for your profile.
 
-**No es un agregador.** No lista ofertas — devuelve un *veredicto* por cada una: puntuación 0-100, fortalezas y riesgos respecto a tu perfil.
+**This is not an aggregator.** It doesn't list jobs — it returns a *verdict* for each one: a 0-100 score, strengths and risks against your profile.
 
 ---
 
@@ -26,7 +26,7 @@ Postular bien es caro: implica leer cientos de ofertas, intuir si encajan con tu
 
 ---
 
-## Arquitectura
+## Architecture
 
 ```
 nginx (entrypoint)
@@ -36,226 +36,229 @@ nginx (entrypoint)
  └── :3000 → grafana
 ```
 
-El pipeline backend sigue Clean Architecture con cuatro capas estrictas:
+The backend pipeline follows Clean Architecture with four strict layers:
 
 ```
 interfaces/   ← FastAPI + CLI (entrypoints)
-application/  ← use cases (orquestación, sin lógica de negocio)
-domain/       ← entidades, value objects, ports (ABCs)
+application/  ← use cases (orchestration, no business logic)
+domain/       ← entities, value objects, ports (ABCs)
 infrastructure/ ← Postgres, Gemini, sentence-transformers, httpx
 ```
 
-Las dependencias apuntan siempre hacia adentro: `infrastructure` implementa los `ports` del `domain`; los `use cases` solo conocen abstracciones.
+Dependencies always point inward: `infrastructure` implements the `domain` `ports`; `use cases` only know abstractions.
 
-**Tres capas de inteligencia, en orden de costo creciente:**
+**Three intelligence layers, in increasing cost order:**
 
-1. **Semántica** (CPU local, todas las ofertas) — filtro grueso por similitud coseno.
-2. **Extracción estructurada** (Gemini, solo las que pasan el filtro) — extrae stack, seniority, modalidad a `JobRequirements` Pydantic validado.
-3. **Scoring LLM** (Gemini, top K) — devuelve `{score, verdict, strengths, risks}`.
+1. **Semantic** (local CPU, all offers) — coarse filter by cosine similarity.
+2. **Structured extraction** (Gemini, only those that pass the filter) — extracts stack, seniority, modality into a validated `JobRequirements` Pydantic model.
+3. **LLM scoring** (Gemini, top K) — returns `{score, verdict, strengths, risks}`.
 
-Ver [`frontend/README.md`](frontend/README.md) para la arquitectura del frontend.
+See [`frontend/README.md`](frontend/README.md) for the frontend architecture.
 
 ---
 
-## Fuentes de datos
+## Data sources
 
-| Fuente | Acceso | Notas |
+| Source | Access | Notes |
 |---|---|---|
-| [Himalayas](https://himalayas.app/) | API JSON pública | filtros por keyword, country, seniority |
-| [Remotive](https://remotive.com/) | API JSON oficial (`/api/remote-jobs`) | software-dev, devops, design |
-| [Jobicy](https://jobicy.com/) | API JSON pública (`/api/v2/remote-jobs`) | remoto, con geo/industry |
-| [RemoteOK](https://remoteok.com/) | API JSON pública (`/api`) | tech remoto, tags |
-| [Arbeitnow](https://www.arbeitnow.com/) | API JSON pública (`/api/job-board-api`) | sin key, remoto EU/global |
-| [Adzuna](https://www.adzuna.com/) | API JSON (key gratuita) | agregador multi-país; requiere `ADZUNA_APP_ID`/`ADZUNA_APP_KEY` |
-| [Jooble](https://jooble.org/) | API JSON (key gratuita) | agregador; requiere `JOOBLE_API_KEY` |
+| [Himalayas](https://himalayas.app/) | Public JSON API | filters by keyword, country, seniority |
+| [Remotive](https://remotive.com/) | Official JSON API (`/api/remote-jobs`) | software-dev, devops, design |
+| [Jobicy](https://jobicy.com/) | Public JSON API (`/api/v2/remote-jobs`) | remote, with geo/industry |
+| [RemoteOK](https://remoteok.com/) | Public JSON API (`/api`) | remote tech, tags |
+| [Arbeitnow](https://www.arbeitnow.com/) | Public JSON API (`/api/job-board-api`) | no key required, remote EU/global |
+| [Adzuna](https://www.adzuna.com/) | JSON API (free key) | multi-country aggregator; requires `ADZUNA_APP_ID`/`ADZUNA_APP_KEY` |
+| [Jooble](https://jooble.org/) | JSON API (free key) | aggregator; requires `JOOBLE_API_KEY` |
 
-Recolección con `--source all`; las fuentes que requieren key se omiten automáticamente si no está configurada. Atribución obligatoria por términos de uso. **No se redistribuyen ofertas a terceros**; el sistema es de uso personal y enlaza siempre al posting original. Frecuencia de fetch: cada 12 horas, muy por debajo del límite de las fuentes.
+Collection with `--source all`; sources that require a key are automatically skipped if not configured. Attribution is mandatory per terms of use. **Job offers are not redistributed to third parties**; the system is for personal use and always links to the original posting. Fetch frequency: every 12 hours, well below source limits.
 
 ---
 
 ## Quickstart
 
-**Requisito:** Docker + Docker Compose.
+**Requirement:** Docker + Docker Compose.
 
 ```bash
 git clone <repo>
 cd job_match_pipeline
 
-# 1. Configurar entorno
+# 1. Configure environment
 cp .env.example .env
-# Editar .env:
-#   GEMINI_API_KEY=...   (Google AI Studio, tier gratuito alcanza)
+# Edit .env:
+#   GEMINI_API_KEY=...   (Google AI Studio, free tier is enough)
 #   AIRFLOW_FERNET_KEY=... (python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
-#   JWT_SECRET=...       (cualquier string largo y aleatorio)
+#   JWT_SECRET=...       (any long random string)
 
-# 2. Levantar todos los servicios
+# 2. Start all services
 docker compose up -d
 
-# 3. Aplicar migraciones (primera vez)
+# 3. Apply migrations (first time)
 docker compose run --rm app alembic upgrade head
 
-# 4. Registrar tu perfil
+# 4. Register your profile
 curl -X POST http://127.0.0.1:8000/profile \
      -H 'Content-Type: application/json' \
      -d '{"username": "daniel", "email": "tu@email.com", "password": "tu-password"}'
 # → {"profile_id": "...", "username": "daniel", "matching": "scheduled"}
 
-# 5. Obtener un token JWT
+# 5. Get a JWT token
 curl -X POST http://127.0.0.1:8000/auth/login \
      -H 'Content-Type: application/json' \
      -d '{"username": "daniel", "password": "tu-password"}'
 # → {"access_token": "...", "token_type": "bearer", "profile_id": "...", "username": "daniel"}
 
-# 6. Disparar el pipeline (primera vez, sin esperar 12h)
-curl -X POST http://127.0.0.1:8000/jobs/refresh
+# 6. Trigger the pipeline (first time, without waiting 12h)
+curl -X POST http://127.0.0.1:8000/jobs/refresh \
+     -H "X-Internal-Api-Key: dev-internal-key"
 
-# 7. Consultar matches (~30s después)
+# 7. Query matches (~30s later)
 curl -H "Authorization: Bearer <token>" \
      'http://127.0.0.1:8000/matches?limit=10' | python -m json.tool
 ```
 
-**URLs de acceso vía nginx (todas en `127.0.0.1`):**
+**Access URLs via nginx (all on `127.0.0.1`):**
 
-| URL | Servicio |
+| URL | Service |
 |---|---|
-| <http://127.0.0.1> | UI (frontend React) |
+| <http://127.0.0.1> | UI (React frontend) |
 | <http://127.0.0.1:8000/docs> | Swagger / OpenAPI |
-| <http://127.0.0.1:8080> | Airflow UI (`admin / admin`, solo local) |
-| <http://127.0.0.1:3000> | Grafana (anónimo Viewer) |
+| <http://127.0.0.1:8080> | Airflow UI (`admin / admin`, local only) |
+| <http://127.0.0.1:3000> | Grafana (anonymous Viewer) |
 
 ---
 
 ## CLI
 
-Los pasos del pipeline también están disponibles como comandos individuales (útil para debug o recolección manual):
+Pipeline steps are also available as individual commands (useful for debugging or manual collection):
 
-| Comando | Descripción |
+| Command | Description |
 |---|---|
-| `docker compose run --rm app python -m src.interfaces.cli.collect --source all --limit 10` | Recolecta y upsertea ofertas en BD |
-| `docker compose run --rm app python -m src.interfaces.cli.extract --limit 50 --print-results` | Extrae `JobRequirements` via Gemini |
-| `docker compose run --rm app python -m src.interfaces.cli.embed --limit 200` | Genera embeddings (sentence-transformers) |
-| `docker compose run --rm app python -m src.interfaces.cli.score --profile-file sample_profile.json --print-top 5` | Scorea ofertas contra el perfil |
+| `docker compose run --rm app python -m src.interfaces.cli.collect --source all --limit 10` | Collect and upsert job offers into the DB |
+| `docker compose run --rm app python -m src.interfaces.cli.extract --limit 50 --print-results` | Extract `JobRequirements` via Gemini |
+| `docker compose run --rm app python -m src.interfaces.cli.embed --limit 200` | Generate embeddings (sentence-transformers) |
+| `docker compose run --rm app python -m src.interfaces.cli.score --profile-file sample_profile.json --print-top 5` | Score offers against the profile |
 
-Todos son idempotentes: re-ejecutarlos no duplica estado.
+All commands are idempotent: re-running them does not duplicate state.
 
 ---
 
-## Orquestación (Airflow)
+## Orchestration (Airflow)
 
-El DAG `job_match` corre las 4 tasks en secuencia, cada 12 horas:
+The `job_match` DAG runs the 4 tasks in sequence, every 12 hours:
 
 ```
 recolectar → extraer_requisitos → embeddings → score_perfiles
 ```
 
-Para levantarlo:
+To start it:
 
 ```bash
-docker compose up -d airflow-init      # inicializa BD de Airflow (one-shot)
+docker compose up -d airflow-init      # initializes Airflow DB (one-shot)
 docker compose up -d airflow-webserver airflow-scheduler
 ```
 
-Accedé a <http://127.0.0.1:8080> con `admin/admin`, habilitá el DAG `job_match` y disparalo manualmente la primera vez.
+Go to <http://127.0.0.1:8080> with `admin/admin`, enable the `job_match` DAG, and trigger it manually the first time.
 
 ---
 
 ## API
 
-Los endpoints de **matches**, **profile** (GET/PUT) y **jobs de usuario** (schedule-run, searches) requieren `Authorization: Bearer <token>`.
+**Matches**, **profile** (GET/PUT) and **user jobs** (schedule-run, searches) endpoints require `Authorization: Bearer <token>`.
 
-| Método | Path | Auth | Descripción |
+| Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/health` | — | Estado de la API, BD y Gemini key |
+| `GET` | `/health` | — | API, DB and Gemini key status |
 | **Auth** | | | |
-| `POST` | `/auth/login` | — | Login con username/password → JWT |
-| **Perfil** | | | |
-| `POST` | `/profile` | — | Registrar cuenta (username, email, password) |
-| `GET` | `/profile/{profile_id}` | ✓ | Obtener datos del perfil propio |
-| `PUT` | `/profile/{profile_id}` | ✓ | Actualizar perfil y re-scorear |
+| `POST` | `/auth/login` | — | Login with username/password → JWT |
+| `POST` | `/auth/forgot-password` | — | Request password reset email |
+| `POST` | `/auth/reset-password` | — | Confirm reset with token + new password |
+| **Profile** | | | |
+| `POST` | `/profile` | — | Register account (username, email, password) |
+| `GET` | `/profile/{profile_id}` | ✓ | Get own profile data |
+| `PUT` | `/profile/{profile_id}` | ✓ | Update profile and re-score |
 | **Matches** | | | |
-| `GET` | `/matches` | ✓ | Lista matches del perfil autenticado (filtros opcionales) |
-| `GET` | `/matches/{job_id}` | ✓ | Detalle: score, veredicto, fortalezas, riesgos, requisitos |
-| **Jobs (usuario)** | | | |
-| `POST` | `/jobs/schedule-run` | ✓ | Programa una búsqueda con filtros vía Airflow |
-| `GET` | `/jobs/searches` | ✓ | Búsquedas guardadas del perfil |
-| `POST` | `/jobs/searches/{dag_run_id}/match-count` | — | Registra cantidad de matches de una búsqueda programada |
-| `GET` | `/jobs/technologies` | — | Stack technologies más frecuentes |
-| `GET` | `/jobs/schedule` | — | Próxima corrida del DAG |
-| `GET` | `/jobs/runs` | — | Últimas corridas con estado de tasks |
+| `GET` | `/matches` | ✓ | List matches for the authenticated profile (optional filters) |
+| `GET` | `/matches/{job_id}` | ✓ | Detail: score, verdict, strengths, risks, requirements |
+| **Jobs (user)** | | | |
+| `POST` | `/jobs/schedule-run` | ✓ | Schedule a search with filters via Airflow |
+| `GET` | `/jobs/searches` | ✓ | Saved searches for the profile |
+| `POST` | `/jobs/searches/{dag_run_id}/match-count` | — | Register match count for a scheduled search |
+| `GET` | `/jobs/technologies` | — | Most frequent stack technologies |
+| `GET` | `/jobs/schedule` | — | Next DAG run |
+| `GET` | `/jobs/runs` | — | Latest runs with task status |
 | **Jobs (ops/debug)** | | | |
-| `POST` | `/jobs/refresh` | — | Dispara el pipeline completo |
-| `POST` | `/jobs/collect` | — | Solo recolección |
-| `POST` | `/jobs/extract` | — | Solo extracción de requisitos |
-| `POST` | `/jobs/embed` | — | Solo generación de embeddings |
-| `POST` | `/jobs/score` | — | Solo scoring de todos los perfiles |
+| `POST` | `/jobs/refresh` | `X-Internal-Api-Key` | Trigger the full pipeline |
+| `POST` | `/jobs/collect` | `X-Internal-Api-Key` | Collection only |
+| `POST` | `/jobs/extract` | `X-Internal-Api-Key` | Requirements extraction only |
+| `POST` | `/jobs/embed` | `X-Internal-Api-Key` | Embedding generation only |
+| `POST` | `/jobs/score` | `X-Internal-Api-Key` | Scoring of all profiles only |
 
 ---
 
 ## Frontend
 
-SPA React que consume la API y muestra matches con veredicto, filtros, drawer de detalle y programación de búsquedas. Tema dark/light, auto-refresh mientras corre el pipeline.
+React SPA that consumes the API and displays matches with verdict, filters, detail drawer, and scheduled search setup. Dark/light theme, auto-refresh while the pipeline runs.
 
-Ver [`frontend/README.md`](frontend/README.md) para stack, rutas, estructura y cómo extender.
+See [`frontend/README.md`](frontend/README.md) for stack, routes, structure, and how to extend it.
 
 ---
 
-## Observabilidad
+## Observability
 
-El stack de observabilidad levanta junto con `docker compose up -d`:
+The observability stack starts alongside `docker compose up -d`:
 
-- **Prometheus** — scrape de `/metrics` en la API (latencias, conteos por endpoint via `prometheus-fastapi-instrumentator`). Config: `observability/prometheus/prometheus.yml`.
-- **Loki + Promtail** — centraliza los logs de todos los contenedores. Config: `observability/loki/` y `observability/promtail/`.
-- **Grafana** — dashboards en `observability/grafana/dashboards/`. Acceso anónimo en rol `Viewer` (puede ver, no editar). URL: <http://127.0.0.1:3000>.
+- **Prometheus** — scrapes `/metrics` on the API (latencies, counts per endpoint via `prometheus-fastapi-instrumentator`). Config: `observability/prometheus/prometheus.yml`.
+- **Loki + Promtail** — centralizes logs from all containers. Config: `observability/loki/` and `observability/promtail/`.
+- **Grafana** — dashboards in `observability/grafana/dashboards/`. Anonymous access in `Viewer` role (can view, not edit). URL: <http://127.0.0.1:3000>.
 
 ---
 
 ## Tests
 
 ```bash
-docker compose run --rm app pytest -v         # 21 módulos, offline-first
+docker compose run --rm app pytest -v         # 172 tests, offline-first
 docker compose run --rm app ruff check src tests   # lint
 ```
 
-Tests offline-first (mocks via `unittest.mock.patch` e `app.dependency_overrides`). Sin dependencia de BD real ni llamadas externas en el suite principal.
+Offline-first tests (mocks via `unittest.mock.patch` and `app.dependency_overrides`). No real DB dependency or external calls in the main suite.
 
 ---
 
-## Seguridad (postura demo-local)
+## Security (local demo posture)
 
-- Todos los puertos bindeados a `127.0.0.1` (no expuestos a red).
-- JWT Bearer (bcrypt + PyJWT) en endpoints de usuario; ops/debug no autenticados (sin rate-limit por diseño local).
-- Grafana anónimo en rol `Viewer` (no puede editar datasources ni dashboards).
-- Headers de seguridad en nginx: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `server_tokens off`.
-- URLs externas en el frontend sanitizadas a `http/https` via `safeHref` (evita `javascript:` en links de ofertas scrapeadas).
-- `filters` de búsquedas programadas validados contra `MatchFilters` Pydantic (no se persiste JSON arbitrario).
-- HTTPS/TLS, CORS restringido y rate-limiting: **fuera de scope** (demo local single-user).
+- All ports bound to `127.0.0.1` (not exposed to the network).
+- JWT Bearer (bcrypt + PyJWT) on user endpoints; pipeline ops endpoints (`/jobs/collect`, `/jobs/extract`, `/jobs/embed`, `/jobs/score`, `/jobs/refresh`) require the `X-Internal-Api-Key` header shared between the API and the Airflow DAG.
+- Grafana anonymous in `Viewer` role (cannot edit datasources or dashboards).
+- Security headers in nginx: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `server_tokens off`.
+- External URLs in the frontend sanitized to `http/https` via `safeHref` (prevents `javascript:` in scraped job offer links).
+- Scheduled search `filters` validated against `MatchFilters` Pydantic (no arbitrary JSON persisted).
+- HTTPS/TLS, restricted CORS and rate-limiting: **out of scope** (local single-user demo).
 
 ---
 
 ## Disclaimers
 
-- El `llm_score` y los riesgos son **orientativos**. La decisión final de postular es del usuario; el sistema reduce la lista, no decide por vos.
-- Proyecto de portafolio + uso personal. No es un producto SaaS ni hay deploy productivo asociado.
-- Las ofertas mostradas se enlazan a su fuente original; este repo no almacena ni redistribuye empleos a terceros.
+- The `llm_score` and risks are **indicative**. The final decision to apply belongs to the user; the system narrows the list, it does not decide for you.
+- Portfolio project + personal use. Not a SaaS product; no production deployment.
+- Displayed offers link to their original source; this repo does not store or redistribute jobs to third parties.
 
 ---
 
-## Licencia
+## License
 
-MIT — ver [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
 <!--
-CHECKLIST PRE-PUBLICACIÓN (completar antes de hacer el repo público)
-====================================================================
-Videos (subir a YouTube no listado, pegar URLs en sección Demo):
+PRE-PUBLICATION CHECKLIST (complete before making the repo public)
+==================================================================
+Videos (upload to unlisted YouTube, paste URLs in Demo section):
   [ ] Video 1 — Pipeline (≤2 min): docker compose up → Airflow → trigger → logs → psql count
-  [ ] Video 2 — Matches (≤2 min): registro → login → POST /jobs/refresh → UI con matches + detalle
+  [ ] Video 2 — Matches (≤2 min): register → login → POST /jobs/refresh → UI with matches + detail
 
 Repo:
-  [ ] gitleaks detect --no-banner (sin hits)
-  [ ] git ls-files | grep -i env (verificar que .env no está trackeado)
-  [ ] Repo público en GitHub
+  [ ] gitleaks detect --no-banner (no hits)
+  [ ] git ls-files | grep -i env (verify .env is not tracked)
+  [ ] Public repo on GitHub
   [ ] Topics: python, airflow, pydantic, pgvector, gemini, fastapi, react, llm, job-search
-  [ ] Descripción: "Pipeline que recolecta ofertas remotas, extrae requisitos con LLM y matchea contra tu perfil"
-  [ ] Pin en perfil
+  [ ] Description: "Pipeline that collects remote job offers, extracts requirements with LLM and matches them against your profile"
+  [ ] Pin on profile
 -->
