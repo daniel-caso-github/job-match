@@ -37,6 +37,7 @@ def list_matches(
     latam_only: bool = False,
     exclude_eu: bool = False,
     with_salary: bool = False,
+    country: Annotated[list[str] | None, Query()] = None,
 ) -> dict:
     filters = MatchFilters(
         min_score=min_score,
@@ -48,6 +49,7 @@ def list_matches(
         latam_only=latam_only,
         exclude_eu=exclude_eu,
         with_salary=with_salary,
+        countries=country or [],
     )
     rows = repo.top_for_profile(current.profile_id, limit=limit, filters=filters)
     matches = [
@@ -57,6 +59,7 @@ def list_matches(
             "company": job.company,
             "url": str(job.url),
             "source": job.source,
+            "country": job.country,
             "llm_score": match.llm_score,
             "semantic_score": _round_semantic(match.semantic_score),
             "verdict": match.verdict,
@@ -87,6 +90,7 @@ def match_detail(
         "company": job.company,
         "url": str(job.url),
         "source": job.source,
+        "country": job.country,
         "llm_score": match.llm_score,
         "semantic_score": _round_semantic(match.semantic_score),
         "verdict": match.verdict,

@@ -55,6 +55,7 @@ export interface MatchListItem {
   company: string;
   url: string;
   source: string;
+  country: string | null;
   llm_score: number | null;
   semantic_score: number | null;
   verdict: Verdict | null;
@@ -130,6 +131,10 @@ export interface PipelineRunsResponse {
 
 export interface TechnologiesResponse {
   technologies: string[];
+}
+
+export interface CountriesResponse {
+  countries: string[];
 }
 
 export interface SavedSearchResponse {

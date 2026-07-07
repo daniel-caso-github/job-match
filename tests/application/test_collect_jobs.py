@@ -45,6 +45,9 @@ class _InMemoryJobRepo(JobRepository):
     def list_stack_technologies(self, limit: int = 30) -> list[str]:
         return []
 
+    def list_countries(self, limit: int = 100) -> list[str]:
+        return []
+
     def semantic_top_k(
         self,
         embedding: list[float],

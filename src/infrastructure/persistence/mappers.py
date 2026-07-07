@@ -26,9 +26,11 @@ from src.infrastructure.persistence.orm_models import (
 )
 
 
-def raw_job_to_orm_payload(raw_job: RawJob) -> dict[str, Any]:
+def raw_job_to_orm_payload(raw_job: RawJob, country_id: int | None = None) -> dict[str, Any]:
     payload = raw_job.model_dump(mode="json")
     payload["url"] = str(payload["url"])
+    payload.pop("country", None)
+    payload["country_id"] = country_id
     return payload
 
 
@@ -41,7 +43,8 @@ def job_model_to_domain(m: JobModel) -> Job:
         company=m.company,
         raw_text=m.raw_text,
         posted_at=m.posted_at,
-        country=m.country,
+        country=m.country_rel.name if m.country_rel else None,
+        continent=m.country_rel.continent if m.country_rel else None,
         remote=m.remote,
         requirements=(
             JobRequirements.model_validate(m.requirements) if m.requirements else None

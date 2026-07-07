@@ -48,6 +48,11 @@ Rules:
   strength — it is missing info, not evidence.
 - Be conservative. Honesty over optimism.
 
+Geographic context:
+- Job country: {country} | Continent: {continent}
+- Candidate location: {candidate_location}
+Use `requires_eu_residency` and `latam_friendly` from requirements for residency constraints.
+
 Job title: {title}
 
 Job posting (first 2000 chars):
@@ -92,6 +97,9 @@ class GeminiScorer(LlmScorer):
     def score(self, profile: ProfileForm, job: Job) -> Verdict:
         prompt = SCORING_PROMPT.format(
             title=job.title,
+            country=job.country or "Unknown",
+            continent=job.continent or "Unknown",
+            candidate_location=profile.location,
             raw_text_excerpt=(job.raw_text or "")[:2000],
             profile_json=profile.model_dump_json(indent=2),
             requirements_json=job.requirements.model_dump_json(indent=2),

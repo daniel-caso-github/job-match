@@ -3,9 +3,12 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from src.domain.entities.saved_search import SavedSearch
+from src.interfaces.api.dependencies import verify_internal_api_key
+from src.interfaces.api.main import app
 from tests.interfaces.api.conftest import FAKE_PROFILE_ID, ApiContext
 
 
@@ -106,6 +109,26 @@ def test_searches_returns_saved_searches_for_profile(
     assert searches[0]["profile_id"] == FAKE_PROFILE_ID
     assert searches[0]["filters"] == {"min_score": 70}
     assert searches[0]["dag_run_id"] == api.airflow.dag_run_id
+
+
+def test_countries_returns_repo_list_in_order(client: TestClient, api: ApiContext):
+    api.jobs.countries = ["United States", "Germany", "Canada"]
+
+    r = client.get("/jobs/countries")
+
+    assert r.status_code == 200
+    assert r.json() == {"countries": ["United States", "Germany", "Canada"]}
+    assert api.jobs.countries_calls == [100]
+
+
+def test_countries_passes_limit(client: TestClient, api: ApiContext):
+    api.jobs.countries = ["United States", "Germany", "Canada"]
+
+    r = client.get("/jobs/countries", params={"limit": 2})
+
+    assert r.status_code == 200
+    assert r.json() == {"countries": ["United States", "Germany"]}
+    assert api.jobs.countries_calls == [2]
 
 
 def test_technologies_returns_repo_list_in_order(client: TestClient, api: ApiContext):
@@ -318,3 +341,24 @@ def test_cancel_search_returns_503_when_airflow_fails_and_does_not_delete_search
     assert r.status_code == 503
     assert api.saved_searches.get_by_dag_run_id(dag_run_id) is not None
     assert api.session.commits == 0
+
+
+@pytest.mark.parametrize("endpoint", ["/jobs/collect", "/jobs/extract", "/jobs/embed", "/jobs/score"])
+def test_ops_endpoints_require_internal_api_key(endpoint: str):
+    app.dependency_overrides.pop(verify_internal_api_key, None)
+    try:
+        with TestClient(app) as c:
+            r = c.post(endpoint)
+        assert r.status_code == 401
+    finally:
+        app.dependency_overrides[verify_internal_api_key] = lambda: None
+
+
+def test_ops_endpoint_rejects_wrong_key():
+    app.dependency_overrides.pop(verify_internal_api_key, None)
+    try:
+        with TestClient(app) as c:
+            r = c.post("/jobs/collect", headers={"X-Internal-Api-Key": "wrong-key"})
+        assert r.status_code == 401
+    finally:
+        app.dependency_overrides[verify_internal_api_key] = lambda: None

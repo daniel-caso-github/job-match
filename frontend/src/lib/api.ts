@@ -1,4 +1,5 @@
 import type {
+  CountriesResponse,
   HealthResponse,
   JobsScheduleResponse,
   JobsScheduleRunResponse,
@@ -116,6 +117,10 @@ export function getSavedSearches(limit = 20): Promise<SavedSearchesResponse> {
 
 export function getTechnologies(limit = 30): Promise<TechnologiesResponse> {
   return apiFetch<TechnologiesResponse>(`/api/jobs/technologies?limit=${limit}`);
+}
+
+export function getCountries(limit = 100): Promise<CountriesResponse> {
+  return apiFetch<CountriesResponse>(`/api/jobs/countries?limit=${limit}`);
 }
 
 export function cancelSearch(dagRunId: string): Promise<{ status: string; dag_run_id: string }> {

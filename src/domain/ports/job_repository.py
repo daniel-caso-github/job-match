@@ -39,6 +39,11 @@ class JobRepository(ABC):
         ...
 
     @abstractmethod
+    def list_countries(self, limit: int = 100) -> list[str]:
+        """Países distintos de los jobs, ordenados por frecuencia desc."""
+        ...
+
+    @abstractmethod
     def semantic_top_k(
         self,
         embedding: list[float],

@@ -12,6 +12,7 @@ from src.domain.value_objects.match_filters import MatchFilters
 from src.interfaces.api.dependencies import (
     AirflowClientDep,
     CurrentProfileDep,
+    InternalKeyDep,
     JobRepositoryDep,
     MatchRepositoryDep,
     SavedSearchRepositoryDep,
@@ -123,6 +124,14 @@ def technologies(
     return {"technologies": repo.list_stack_technologies(limit=limit)}
 
 
+@router.get("/countries")
+def countries_list(
+    repo: JobRepositoryDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> dict:
+    return {"countries": repo.list_countries(limit=limit)}
+
+
 @router.get("/schedule")
 def schedule(airflow: AirflowClientDep) -> dict:
     try:
@@ -188,28 +197,28 @@ def runs(
 
 
 @router.post("/collect", status_code=status.HTTP_200_OK)
-def collect() -> dict:
+def collect(_: InternalKeyDep) -> dict:
     n = run_collect()
     logger.info("collect: %d jobs", n)
     return {"collected": n}
 
 
 @router.post("/extract", status_code=status.HTTP_200_OK)
-def extract(limit: Annotated[int, Query(ge=1, le=500)] = 200) -> dict:
+def extract(_: InternalKeyDep, limit: Annotated[int, Query(ge=1, le=500)] = 200) -> dict:
     n = run_extract(limit=limit)
     logger.info("extract: %d jobs", n)
     return {"extracted": n}
 
 
 @router.post("/embed", status_code=status.HTTP_200_OK)
-def embed(limit: Annotated[int, Query(ge=1, le=500)] = 200) -> dict:
+def embed(_: InternalKeyDep, limit: Annotated[int, Query(ge=1, le=500)] = 200) -> dict:
     n = run_embed(limit=limit)
     logger.info("embed: %d jobs", n)
     return {"embedded": n}
 
 
 @router.post("/score", status_code=status.HTTP_200_OK)
-def score() -> dict:
+def score(_: InternalKeyDep) -> dict:
     scores = run_score_all_profiles()
     logger.info("score: %s", scores)
     return {"scored": scores}
@@ -244,16 +253,14 @@ def cancel_search(
 @router.post("/searches/{dag_run_id}/match-count", status_code=status.HTTP_200_OK)
 def record_match_count(
     dag_run_id: str,
+    _: InternalKeyDep,
     searches: SavedSearchRepositoryDep,
     matches: MatchRepositoryDep,
     session: SessionDep,
-    current: CurrentProfileDep,
 ) -> dict:
     search = searches.get_by_dag_run_id(dag_run_id)
     if search is None:
         return {"updated": 0}
-    if search.profile_id != current.profile_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="acceso denegado")
     count = matches.count_for_profile(
         search.profile_id, MatchFilters(**search.filters)
     )

@@ -22,6 +22,7 @@ class Job(BaseModel):
     raw_text: str
     posted_at: datetime | None = None
     country: str | None = None
+    continent: str | None = None
     remote: bool | None = None
     requirements: JobRequirements | None = None
     embedding: list[float] | None = None

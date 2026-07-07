@@ -11,7 +11,7 @@ from src.domain.value_objects.match_filters import MatchFilters
 from tests.interfaces.api.conftest import FAKE_PROFILE_ID, ApiContext
 
 
-def _job(job_id: str = "j1") -> Job:
+def _job(job_id: str = "j1", country: str | None = "Argentina") -> Job:
     return Job.model_validate(
         {
             "id": job_id,
@@ -19,6 +19,7 @@ def _job(job_id: str = "j1") -> Job:
             "url": f"https://example.com/{job_id}",
             "title": f"Backend Engineer {job_id}",
             "company": "Acme",
+            "country": country,
             "raw_text": "...full description...",
             "requirements": {
                 "stack": ["python", "fastapi"],
@@ -173,3 +174,35 @@ def test_match_detail_returns_404_when_missing(client: TestClient, api: ApiConte
 
     assert r.status_code == 404
     assert r.json()["detail"] == "match not found"
+
+
+def test_list_matches_includes_country_in_response(client: TestClient, api: ApiContext):
+    api.matches.top_response = [(_match(job_id="j1"), _job("j1", country="United States"))]
+
+    r = client.get("/matches")
+
+    assert r.status_code == 200
+    first = r.json()["matches"][0]
+    assert "country" in first
+    assert first["country"] == "United States"
+
+
+def test_match_detail_includes_country_in_response(client: TestClient, api: ApiContext):
+    api.matches.pair_response = (_match(llm_score=85), _job("j1", country="Germany"))
+
+    r = client.get("/matches/j1")
+
+    assert r.status_code == 200
+    body = r.json()
+    assert "country" in body
+    assert body["country"] == "Germany"
+
+
+def test_list_matches_builds_country_filter(client: TestClient, api: ApiContext):
+    api.matches.top_response = []
+
+    r = client.get("/matches", params=[("country", "United States"), ("country", "Canada")])
+
+    assert r.status_code == 200
+    _, _, filters = api.matches.top_calls[0]
+    assert filters.countries == ["United States", "Canada"]

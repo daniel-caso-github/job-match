@@ -96,3 +96,76 @@ def test_login_does_not_reveal_whether_user_exists(client: TestClient, api: ApiC
 def test_login_rejects_missing_password_field(client: TestClient, api: ApiContext):
     r = client.post("/auth/login", json={"username": "daniel-test"})
     assert r.status_code == 422
+
+
+# ---- forgot-password ----
+
+def test_forgot_password_returns_200_for_existing_email(client: TestClient, api: ApiContext):
+    api.profiles.profiles[FAKE_PROFILE_ID] = _make_profile()
+    api.profiles._ids_by_username["daniel-test"] = FAKE_PROFILE_ID
+
+    r = client.post("/auth/forgot-password", json={"email": "daniel@example.com"})
+
+    assert r.status_code == 200
+
+
+def test_forgot_password_returns_200_for_unknown_email(client: TestClient, api: ApiContext):
+    r = client.post("/auth/forgot-password", json={"email": "nobody@example.com"})
+
+    assert r.status_code == 200
+
+
+def test_forgot_password_sends_email_only_when_registered(client: TestClient, api: ApiContext):
+    profile = Profile(
+        id=FAKE_PROFILE_ID,
+        form=ProfileForm.model_validate({**_FORM_DATA, "email": "daniel@example.com"}),
+        embedding=None,
+        updated_at=None,
+        password_hash=None,
+    )
+    api.profiles.profiles[FAKE_PROFILE_ID] = profile
+
+    client.post("/auth/forgot-password", json={"email": "daniel@example.com"})
+    assert len(api.email.sent) == 1
+    assert api.email.sent[0][0] == "daniel@example.com"
+
+    client.post("/auth/forgot-password", json={"email": "nobody@example.com"})
+    assert len(api.email.sent) == 1  # no second email
+
+
+# ---- reset-password ----
+
+def test_reset_password_updates_password_with_valid_token(client: TestClient, api: ApiContext):
+    from datetime import UTC, datetime, timedelta
+
+    profile = Profile(
+        id=FAKE_PROFILE_ID,
+        form=ProfileForm.model_validate(_FORM_DATA),
+        embedding=None,
+        updated_at=None,
+        password_hash=None,
+    )
+    api.profiles.profiles[FAKE_PROFILE_ID] = profile
+    api.profiles.set_reset_token(
+        FAKE_PROFILE_ID, "valid-token", datetime.now(UTC) + timedelta(minutes=30)
+    )
+
+    r = client.post(
+        "/auth/reset-password", json={"token": "valid-token", "new_password": "newpass123"}
+    )
+
+    assert r.status_code == 200
+
+
+def test_reset_password_returns_400_for_invalid_token(client: TestClient, api: ApiContext):
+    r = client.post(
+        "/auth/reset-password", json={"token": "bad-token", "new_password": "newpass123"}
+    )
+
+    assert r.status_code == 400
+
+
+def test_reset_password_rejects_short_password(client: TestClient, api: ApiContext):
+    r = client.post("/auth/reset-password", json={"token": "any", "new_password": "short"})
+
+    assert r.status_code == 422
