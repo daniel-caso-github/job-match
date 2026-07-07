@@ -1,8 +1,8 @@
 # Job Match — Frontend
 
-> SPA React que consume la API de Job Match Pipeline y muestra matches con veredicto, filtros avanzados, drawer de detalle y programación de búsquedas.
+> React SPA that consumes the Job Match Pipeline API and displays matches with verdict, advanced filters, a detail drawer, and scheduled searches.
 >
-> Parte de [Job Match Pipeline](../README.md) — ver el README raíz para arquitectura backend, pipeline y quickstart.
+> Part of [Job Match Pipeline](../README.md) — see the root README for backend architecture, pipeline, and quickstart.
 
 ---
 
@@ -12,109 +12,109 @@ React 18.3 · TypeScript 5.5 · Vite 5.4 · Tailwind 3.4 · TanStack Query 5.56 
 
 ---
 
-## Cómo correr
+## How to run
 
-**Docker-only** — se levanta junto con el resto del proyecto:
+**Docker-only** — starts alongside the rest of the project:
 
 ```bash
-# Desde la raíz del repo:
+# From the repo root:
 docker compose up -d
 ```
 
-El servicio `frontend` corre `npm run dev` (Vite con HMR) dentro del contenedor. **No publica puerto propio** — el acceso al usuario va vía nginx:
+The `frontend` service runs `npm run dev` (Vite with HMR) inside the container. **It does not expose its own port** — user access goes through nginx:
 
-- **UI:** <http://127.0.0.1> (puerto 80 → nginx → `frontend:5173`)
+- **UI:** <http://127.0.0.1> (port 80 → nginx → `frontend:5173`)
 - **API (Swagger):** <http://127.0.0.1:8000/docs>
 
-> El proxy `/api` en `vite.config.ts` apunta a `http://api:8000` dentro de la red de compose. Si intentás correr `npm run dev` directamente en tu máquina, las llamadas a `/api/*` no resolverán.
+> The `/api` proxy in `vite.config.ts` points to `http://api:8000` inside the compose network. If you run `npm run dev` directly on your machine, calls to `/api/*` will not resolve.
 
-### Scripts npm (disponibles dentro del contenedor)
+### npm scripts (available inside the container)
 
-| Script | Descripción |
+| Script | Description |
 |---|---|
-| `npm run dev` | Dev server con HMR (Vite, puerto 5173) |
-| `npm run build` | Typecheck + build de producción a `dist/` |
-| `npm run type-check` | Solo `tsc --noEmit` |
-| `npm run preview` | Sirve el build de `dist/` localmente |
+| `npm run dev` | Dev server with HMR (Vite, port 5173) |
+| `npm run build` | Typecheck + production build to `dist/` |
+| `npm run type-check` | `tsc --noEmit` only |
+| `npm run preview` | Serves the `dist/` build locally |
 
 ---
 
-## Estructura de `src/`
+## `src/` structure
 
 ```
 src/
-├── pages/              # Pantallas (route-level)
-│   ├── MatchesList.tsx   — lista principal + drawer de detalle
-│   ├── SearchPage.tsx    — formulario de búsqueda programada
-│   ├── SchedulesPage.tsx — historial de corridas y búsquedas guardadas
-│   └── ProfileForm.tsx   — crear / actualizar perfil profesional
-├── components/         # Componentes de features
-│   ├── Gate.tsx          — pantalla de login (username + password)
-│   ├── Header.tsx        — barra de navegación + health pill + theme toggle
-│   ├── MatchCard.tsx     — card resumida en la lista
-│   ├── MatchDetailDrawer.tsx — drawer de detalle (score, veredicto, requisitos)
-│   ├── FiltersSidebar.tsx — sidebar de filtros de matches
-│   ├── PipelineRunsDrawer.tsx — drawer de historial de corridas
+├── pages/              # Screens (route-level)
+│   ├── MatchesList.tsx   — main list + detail drawer
+│   ├── SearchPage.tsx    — scheduled search form
+│   ├── SchedulesPage.tsx — pipeline run history and saved searches
+│   └── ProfileForm.tsx   — create / update professional profile
+├── components/         # Feature components
+│   ├── Gate.tsx          — login screen (username + password)
+│   ├── Header.tsx        — navigation bar + health pill + theme toggle
+│   ├── MatchCard.tsx     — summary card in the list
+│   ├── MatchDetailDrawer.tsx — detail drawer (score, verdict, requirements)
+│   ├── FiltersSidebar.tsx — matches filter sidebar
+│   ├── PipelineRunsDrawer.tsx — pipeline run history drawer
 │   ├── VerdictPanel.tsx, RequirementsPanel.tsx, RawTextCollapsible.tsx
 │   ├── ScoreBadge.tsx, SourceBadge.tsx, SourceAttribution.tsx
 │   ├── StageStepper.tsx, StatusChip.tsx, StackInput.tsx
-│   └── ui/               — primitivas: Drawer, FilterChip, MultiSelect,
+│   └── ui/               — primitives: Drawer, FilterChip, MultiSelect,
 │                            SegmentedControl, ToggleSwitch, Logo, icons
-├── lib/                # Lógica no-UI
-│   ├── api.ts            — cliente HTTP tipado + ApiError
-│   ├── searchFilters.ts  — tipo SearchFilters, defaults, serializadores, toMatchFilters
-│   ├── profileStorage.ts — localStorage: profileId, username, token JWT
+├── lib/                # Non-UI logic
+│   ├── api.ts            — typed HTTP client + ApiError
+│   ├── searchFilters.ts  — SearchFilters type, defaults, serializers, toMatchFilters
+│   ├── profileStorage.ts — localStorage: profileId, username, JWT token
 │   ├── profile-context.tsx — ProfileProvider + useProfile()
-│   ├── queryClient.ts    — configuración de TanStack Query
-│   ├── schemas.ts        — schemas Zod (registro, perfil)
-│   ├── format.ts         — formateo de fechas, safeHref
-│   ├── score.ts          — score → color, metadatos de fuentes
-│   └── pipeline.ts       — helpers de estado de corridas
+│   ├── queryClient.ts    — TanStack Query configuration
+│   ├── schemas.ts        — Zod schemas (registration, profile)
+│   ├── format.ts         — date formatting, safeHref
+│   ├── score.ts          — score → color, source metadata
+│   └── pipeline.ts       — run state helpers
 ├── hooks/
-│   ├── useTheme.ts       — dark/light con persistencia en localStorage
-│   └── useSearchFilters.ts — filtros de matches persistidos
+│   ├── useTheme.ts       — dark/light with localStorage persistence
+│   └── useSearchFilters.ts — persisted match filters
 └── types/
-    └── api.ts            — interfaces TypeScript de todos los responses/requests
+    └── api.ts            — TypeScript interfaces for all responses/requests
 ```
 
 ---
 
-## Rutas y flujo
+## Routes and flow
 
-El routing está **gated por `profileId`**: sin perfil activo solo se accede a `/profile`; todo lo demás renderiza `<Gate>` (pantalla de login).
+Routing is **gated by `profileId`**: without an active profile only `/profile` is accessible; everything else renders `<Gate>` (login screen).
 
-| Ruta | Componente | Descripción |
+| Route | Component | Description |
 |---|---|---|
-| `/` | `MatchesList` | Lista principal con sidebar de filtros |
-| `/matches/:jobId` | `MatchesList` + `MatchDetailDrawer` | Drawer de detalle sobre la lista |
-| `/search` | `SearchPage` | Programar búsqueda con filtros y frecuencia |
-| `/programaciones` | `SchedulesPage` | Historial de corridas del pipeline y búsquedas guardadas |
-| `/profile` | `ProfileForm` | Crear o actualizar el perfil profesional |
+| `/` | `MatchesList` | Main list with filter sidebar |
+| `/matches/:jobId` | `MatchesList` + `MatchDetailDrawer` | Detail drawer over the list |
+| `/search` | `SearchPage` | Schedule a search with filters and frequency |
+| `/programaciones` | `SchedulesPage` | Pipeline run history and saved searches |
+| `/profile` | `ProfileForm` | Create or update the professional profile |
 
-**Flujo típico de un usuario nuevo:**
+**Typical new-user flow:**
 
-1. **Gate** → ingresa username + password → `POST /api/auth/login` → JWT guardado en localStorage.
-2. **Lista de matches** → sidebar de filtros → `GET /api/matches` con Bearer token → cards con score y fortaleza principal.
-3. Click en una card → **drawer de detalle** → veredicto, fortalezas/riesgos, requisitos estructurados, link a la oferta original (sanitizado con `safeHref`).
-4. Acceder a `/search` → configurar filtros → `POST /api/jobs/schedule-run` → búsqueda programada para 12h, guardada en BD.
-5. **`/programaciones`** → ver timeline de corridas y estado por task (StageStepper); poll cada 30s.
+1. **Gate** → enters username + password → `POST /api/auth/login` → JWT stored in localStorage.
+2. **Matches list** → filter sidebar → `GET /api/matches` with Bearer token → cards with score and top strength.
+3. Click a card → **detail drawer** → verdict, strengths/risks, structured requirements, link to the original posting (sanitized with `safeHref`).
+4. Go to `/search` → configure filters → `POST /api/jobs/schedule-run` → search scheduled for 12h, saved to DB.
+5. **`/programaciones`** → view run timeline and per-task status (StageStepper); polled every 30s.
 
 ---
 
-## Comunicación con la API
+## API communication
 
-### Cliente HTTP (`lib/api.ts`)
+### HTTP client (`lib/api.ts`)
 
-Función genérica `apiFetch<T>` que:
-- Añade `Content-Type: application/json`.
-- Lee el JWT de la sesión actual y añade `Authorization: Bearer <token>` en cada request.
-- Lanza `ApiError(status, body)` en respuestas no-2xx.
+Generic `apiFetch<T>` function that:
+- Adds `Content-Type: application/json`.
+- Reads the JWT from the current session and adds `Authorization: Bearer <token>` to every request.
+- Throws `ApiError(status, body)` on non-2xx responses.
 
-Todas las llamadas usan rutas relativas `/api/...` que el proxy de Vite reescribe a `http://api:8000/...` (sin el prefijo `/api`).
+All calls use relative paths `/api/...` that the Vite proxy rewrites to `http://api:8000/...` (stripping the `/api` prefix).
 
-### Endpoints consumidos
+### Consumed endpoints
 
-| Función en `api.ts` | Método + Path | Auth |
+| Function in `api.ts` | Method + Path | Auth |
 |---|---|---|
 | `login` | `POST /api/auth/login` | — |
 | `registerProfile` | `POST /api/profile` | — |
@@ -127,34 +127,34 @@ Todas las llamadas usan rutas relativas `/api/...` que el proxy de Vite reescrib
 | `getSavedSearches` | `GET /api/jobs/searches` | ✓ |
 | `getTechnologies` | `GET /api/jobs/technologies` | — |
 
-### Filtros y serializadores (`lib/searchFilters.ts`)
+### Filters and serializers (`lib/searchFilters.ts`)
 
-`SearchFilters` define el estado de la UI (camelCase: `minScore`, `remoteOnly`, `englishMax`, etc.). Dos serializadores lo convierten al formato de la API:
+`SearchFilters` defines the UI state (camelCase: `minScore`, `remoteOnly`, `englishMax`, etc.). Two serializers convert it to the API format:
 
-- **`filtersToQueryParams`** — para `GET /api/matches`: convierte a query string (`min_score`, `source`, `stack`, `seniority`, `english_max`, flags booleanos).
-- **`toMatchFilters`** — para `POST /api/jobs/schedule-run`: convierte a JSON snake_case compatible con `MatchFilters` Pydantic (expande `englishMax` a la lista de niveles de idioma).
+- **`filtersToQueryParams`** — for `GET /api/matches`: converts to query string (`min_score`, `source`, `stack`, `seniority`, `english_max`, boolean flags).
+- **`toMatchFilters`** — for `POST /api/jobs/schedule-run`: converts to snake_case JSON compatible with the Pydantic `MatchFilters` schema (expands `englishMax` into the list of language levels).
 
-### Sesión (`lib/profileStorage.ts` + `lib/profile-context.tsx`)
+### Session (`lib/profileStorage.ts` + `lib/profile-context.tsx`)
 
-La sesión (`profileId`, `username`, `token`) se persiste en `localStorage["jobmatch.session"]`. `ProfileProvider` la expone via `useProfile()` con `login(session)` / `logout()` (logout limpia el token pero recuerda el último username para el Gate).
+The session (`profileId`, `username`, `token`) is persisted in `localStorage["jobmatch.session"]`. `ProfileProvider` exposes it via `useProfile()` with `login(session)` / `logout()` (logout clears the token but remembers the last username for the Gate).
 
 ---
 
 ## Features
 
-- **Tema dark/light** — `hooks/useTheme.ts`, persistido en `localStorage["jobmatch.theme"]`. Script inline en `index.html` aplica el tema antes del primer render (evita flash). Toggle disponible en el header y en el Gate.
-- **Filtros persistidos** — `hooks/useSearchFilters.ts` guarda los filtros en `localStorage["jobmatch.searchFilters"]` y los restaura entre sesiones.
-- **Health pill** — `Header.tsx` consulta `GET /api/health` cada 60s. Muestra el estado (OK / Degradado / Sin conexión) con tooltip de BD, Gemini key y modelo.
-- **Auto-refresh mientras corre el pipeline** — `MatchesList.tsx` detecta corridas activas y hace poll de matches cada 15s; cuando finaliza, invalida las queries y muestra un toast "Pipeline finalizado".
-- **Atribución de fuentes** — `SourceAttribution.tsx` muestra el string de atribución devuelto por la API (obligatorio por los términos de Himalayas y Remotive).
-- **`safeHref`** (`lib/format.ts`) — filtra URLs de ofertas scrapeadas para que solo pasen esquemas `http/https`, evitando que una URL maliciosa (`javascript:...`) se ejecute al hacer click.
-- **Keyword filter** — aplicado del lado cliente sobre título, empresa, fortalezas y riesgos (`matchesKeywords` en `searchFilters.ts`), sin round-trip a la API.
+- **Dark/light theme** — `hooks/useTheme.ts`, persisted in `localStorage["jobmatch.theme"]`. An inline script in `index.html` applies the theme before the first render (prevents flash). Toggle available in the header and in the Gate.
+- **Persisted filters** — `hooks/useSearchFilters.ts` saves filters to `localStorage["jobmatch.searchFilters"]` and restores them across sessions.
+- **Health pill** — `Header.tsx` polls `GET /api/health` every 60s. Shows status (OK / Degraded / Offline) with a tooltip showing DB, Gemini key, and model.
+- **Auto-refresh while pipeline runs** — `MatchesList.tsx` detects active runs and polls matches every 15s; on completion, invalidates queries and shows a "Pipeline finished" toast.
+- **Source attribution** — `SourceAttribution.tsx` displays the attribution string returned by the API (required by Himalayas and Remotive terms of service).
+- **`safeHref`** (`lib/format.ts`) — filters scraped job URLs to allow only `http/https` schemes, preventing a malicious URL (`javascript:...`) from executing on click.
+- **Keyword filter** — applied client-side over title, company, strengths, and risks (`matchesKeywords` in `searchFilters.ts`), with no API round-trip.
 
 ---
 
-## Convenciones
+## Conventions
 
-- Sin `any` explícito; todas las interfaces en `types/api.ts`.
-- Sin lógica en componentes de página — extraída a `lib/` y `hooks/`.
-- `profileId` siempre via `useProfile()`, nunca leer `localStorage` directamente en un componente.
-- Atribución de fuentes obligatoria: `<SourceAttribution>` en lista y drawer.
+- No explicit `any`; all interfaces in `types/api.ts`.
+- No logic in page components — extracted to `lib/` and `hooks/`.
+- `profileId` always via `useProfile()`, never reading `localStorage` directly in a component.
+- Source attribution is mandatory: `<SourceAttribution>` in both the list and the drawer.
