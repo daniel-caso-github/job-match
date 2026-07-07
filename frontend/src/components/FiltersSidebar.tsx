@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import FilterChip from "./ui/FilterChip";
 import MultiSelect from "./ui/MultiSelect";
 import ToggleSwitch from "./ui/ToggleSwitch";
-import { getTechnologies } from "../lib/api";
+import { getCountries, getTechnologies } from "../lib/api";
 import { scoreColors } from "../lib/score";
 import { DEFAULT_FILTERS, type SearchFilters } from "../lib/searchFilters";
 import type { Seniority } from "../types/api";
@@ -42,6 +42,12 @@ export default function FiltersSidebar({ filters, onChange }: FiltersSidebarProp
   const { data: techData, isLoading: techsLoading } = useQuery({
     queryKey: ["technologies"],
     queryFn: () => getTechnologies(100),
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: countryData, isLoading: countriesLoading } = useQuery({
+    queryKey: ["countries"],
+    queryFn: () => getCountries(200),
     staleTime: 5 * 60_000,
   });
 
@@ -93,6 +99,17 @@ export default function FiltersSidebar({ filters, onChange }: FiltersSidebarProp
           placeholder="Seleccionar tecnologías"
           searchPlaceholder="buscar tecnología"
           loading={techsLoading}
+        />
+      </Section>
+
+      <Section title="País">
+        <MultiSelect
+          options={countryData?.countries ?? []}
+          selected={filters.countries}
+          onChange={(countries) => onChange({ ...filters, countries })}
+          placeholder="Seleccionar países"
+          searchPlaceholder="buscar país"
+          loading={countriesLoading}
         />
       </Section>
 

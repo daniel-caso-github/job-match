@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 from src.domain.entities.profile import Profile
 from src.domain.value_objects.profile_form import ProfileForm
@@ -31,3 +32,12 @@ class ProfileRepository(ABC):
 
     @abstractmethod
     def list_all(self) -> list[Profile]: ...
+
+    @abstractmethod
+    def set_reset_token(self, profile_id: str, token: str, expires_at: datetime) -> None: ...
+
+    @abstractmethod
+    def get_by_reset_token(self, token: str) -> Profile | None: ...
+
+    @abstractmethod
+    def clear_reset_token(self, profile_id: str) -> None: ...

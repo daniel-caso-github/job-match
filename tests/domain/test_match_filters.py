@@ -33,3 +33,4 @@ def test_match_filters_defaults_are_empty():
     assert not filters.latam_only
     assert not filters.exclude_eu
     assert not filters.with_salary
+    assert filters.countries == []

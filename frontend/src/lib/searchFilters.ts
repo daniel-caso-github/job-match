@@ -5,6 +5,7 @@ export interface SearchFilters {
   sources: { himalayas: boolean; remotive: boolean; jobicy: boolean; remoteok: boolean; arbeitnow: boolean; adzuna: boolean; jooble: boolean };
   minScore: number;
   stack: string[];
+  countries: string[];
   seniority: Partial<Record<Seniority, boolean>>;
   englishMax: string;
   remoteOnly: boolean;
@@ -20,6 +21,7 @@ export const DEFAULT_FILTERS: SearchFilters = {
   sources: { himalayas: true, remotive: true, jobicy: true, remoteok: true, arbeitnow: true, adzuna: true, jooble: true },
   minScore: 0,
   stack: [],
+  countries: [],
   seniority: {},
   englishMax: "",
   remoteOnly: false,
@@ -69,6 +71,7 @@ export function isDefaultFilters(filters: SearchFilters): boolean {
     filters.sources.jooble &&
     filters.minScore === 0 &&
     filters.stack.length === 0 &&
+    filters.countries.length === 0 &&
     selectedSeniorities(filters).length === 0 &&
     filters.englishMax === "" &&
     !filters.remoteOnly &&
@@ -89,6 +92,7 @@ export function filtersToQueryParams(filters: SearchFilters): URLSearchParams {
   if (enabledSources.length === 0) params.append("source", "__none__");
 
   filters.stack.forEach((tech) => params.append("stack", tech));
+  filters.countries.forEach((c) => params.append("country", c));
   selectedSeniorities(filters).forEach((level) => params.append("seniority", level));
   if (filters.englishMax) params.set("english_max", filters.englishMax);
   if (filters.remoteOnly) params.set("remote_only", "true");
@@ -111,6 +115,7 @@ export function toMatchFilters(f: SearchFilters): Record<string, unknown> {
     ...(f.keywords.length > 0 && { keywords: f.keywords }),
     sources: enabledSources,
     stack: f.stack,
+    countries: f.countries,
     seniorities,
     english_levels: englishLevels,
     remote_only: f.remoteOnly,

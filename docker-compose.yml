@@ -14,6 +14,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session
     PIPELINE_API_URL: http://api:8000
+    INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
   volumes:
     - ./dags:/opt/airflow/dags:ro
   depends_on:
@@ -70,6 +71,7 @@ services:
       AIRFLOW_API_USER: ${AIRFLOW_API_USER:-admin}
       AIRFLOW_API_PASSWORD: ${AIRFLOW_API_PASSWORD:-admin}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production-32b}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
     volumes:
       - ./src:/app/src:ro
     working_dir: /app

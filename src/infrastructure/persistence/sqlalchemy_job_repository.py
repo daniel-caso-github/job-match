@@ -9,7 +9,8 @@ from src.domain.entities.raw_job import RawJob
 from src.domain.ports.job_repository import JobRepository
 from src.domain.value_objects.job_requirements import JobRequirements
 from src.infrastructure.persistence import mappers
-from src.infrastructure.persistence.orm_models import JobModel, MatchModel
+from src.infrastructure.persistence.country_resolver import SqlAlchemyCountryResolver
+from src.infrastructure.persistence.orm_models import CountryModel, JobModel, MatchModel
 
 
 class SqlAlchemyJobRepository(JobRepository):
@@ -23,7 +24,9 @@ class SqlAlchemyJobRepository(JobRepository):
         self._session = session
 
     def upsert(self, job: RawJob) -> None:
-        payload = mappers.raw_job_to_orm_payload(job)
+        resolver = SqlAlchemyCountryResolver(self._session)
+        country_id = resolver.resolve(job.country)
+        payload = mappers.raw_job_to_orm_payload(job, country_id=country_id)
         stmt = pg_insert(JobModel).values(**payload)
         stmt = stmt.on_conflict_do_update(
             index_elements=["id"],
@@ -32,6 +35,7 @@ class SqlAlchemyJobRepository(JobRepository):
                 "company": stmt.excluded.company,
                 "raw_text": stmt.excluded.raw_text,
                 "url": stmt.excluded.url,
+                "country_id": stmt.excluded.country_id,
             },
         )
         self._session.execute(stmt)
@@ -82,6 +86,16 @@ class SqlAlchemyJobRepository(JobRepository):
             .join(tech, true())
             .group_by(tech.c.value)
             .order_by(func.count().desc(), tech.c.value)
+            .limit(limit)
+        )
+        return list(self._session.execute(stmt).scalars())
+
+    def list_countries(self, limit: int = 100) -> list[str]:
+        stmt = (
+            select(CountryModel.name)
+            .join(JobModel, JobModel.country_id == CountryModel.id)
+            .group_by(CountryModel.name)
+            .order_by(func.count().desc(), CountryModel.name)
             .limit(limit)
         )
         return list(self._session.execute(stmt).scalars())

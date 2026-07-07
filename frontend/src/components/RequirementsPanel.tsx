@@ -3,6 +3,7 @@ import { CheckIcon, WarningIcon } from "./ui/icons";
 
 interface Props {
   requirements: JobRequirements | null;
+  country?: string | null;
 }
 
 interface ReqRow {
@@ -14,9 +15,10 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export default function RequirementsPanel({ requirements: r }: Props) {
+export default function RequirementsPanel({ requirements: r, country }: Props) {
   const rows: ReqRow[] = r
     ? [
+        { label: "País", value: country ?? null },
         { label: "Seniority", value: r.seniority ? capitalize(r.seniority) : null },
         { label: "Inglés requerido", value: r.english_level },
         { label: "Remoto", value: r.remote === true ? "Sí" : r.remote === false ? "No" : null },

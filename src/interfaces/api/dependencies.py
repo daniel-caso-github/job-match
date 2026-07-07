@@ -10,11 +10,12 @@ from collections.abc import Iterator
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Depends, HTTPException, Security, status
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from src.domain.ports.email_sender import EmailSender
 from src.domain.ports.embedder import Embedder
 from src.domain.ports.job_repository import JobRepository
 from src.domain.ports.llm_scorer import LlmScorer
@@ -22,6 +23,8 @@ from src.domain.ports.match_repository import MatchRepository
 from src.domain.ports.profile_repository import ProfileRepository
 from src.domain.ports.requirements_extractor import RequirementsExtractor
 from src.domain.ports.saved_search_repository import SavedSearchRepository
+from src.infrastructure.config import settings
+from src.infrastructure.email.resend_email_sender import ResendEmailSender
 from src.infrastructure.embedding.sentence_transformers_embedder import (
     SentenceTransformersEmbedder,
 )
@@ -93,6 +96,23 @@ def get_airflow_client() -> AirflowClient:
     return AirflowClient()
 
 
+def get_email_sender() -> EmailSender:
+    return ResendEmailSender()
+
+
+_internal_key_header = APIKeyHeader(name="X-Internal-Api-Key", auto_error=False)
+
+
+def verify_internal_api_key(
+    key: Annotated[str | None, Security(_internal_key_header)] = None,
+) -> None:
+    if key != settings.internal_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key inválida o ausente",
+        )
+
+
 class TokenData(BaseModel):
     profile_id: str
     username: str
@@ -126,6 +146,8 @@ RequirementsExtractorDep = Annotated[
 EmbedderDep = Annotated[Embedder, Depends(get_embedder)]
 LlmScorerDep = Annotated[LlmScorer, Depends(get_llm_scorer)]
 AirflowClientDep = Annotated[AirflowClient, Depends(get_airflow_client)]
+EmailSenderDep = Annotated[EmailSender, Depends(get_email_sender)]
 SavedSearchRepositoryDep = Annotated[
     SavedSearchRepository, Depends(get_saved_search_repository)
 ]
+InternalKeyDep = Annotated[None, Depends(verify_internal_api_key)]

@@ -13,7 +13,7 @@ from src.domain.entities.match import Match
 from src.domain.ports.match_repository import MatchRepository
 from src.domain.value_objects.match_filters import MatchFilters
 from src.infrastructure.persistence import mappers
-from src.infrastructure.persistence.orm_models import JobModel, MatchModel
+from src.infrastructure.persistence.orm_models import CountryModel, JobModel, MatchModel
 
 
 class SqlAlchemyMatchRepository(MatchRepository):
@@ -99,6 +99,10 @@ class SqlAlchemyMatchRepository(MatchRepository):
             )
         if filters.with_salary:
             stmt = stmt.where(req["salary_range"].astext.is_not(None))
+        if filters.countries:
+            stmt = stmt.where(
+                JobModel.country_rel.has(CountryModel.name.in_(filters.countries))
+            )
         return stmt
 
     def get_for_pair(

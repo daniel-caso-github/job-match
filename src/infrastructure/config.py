@@ -30,6 +30,10 @@ class Settings:
     jwt_secret: str
     jwt_algorithm: str
     access_token_expire_minutes: int
+    resend_api_key: str | None
+    resend_from: str
+    reset_token_ttl_minutes: int
+    internal_api_key: str
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -57,6 +61,10 @@ class Settings:
             access_token_expire_minutes=int(
                 os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")
             ),
+            resend_api_key=os.environ.get("RESEND_API_KEY"),
+            resend_from=os.environ.get("RESEND_FROM", "noreply@jobmatch.local"),
+            reset_token_ttl_minutes=int(os.environ.get("RESET_TOKEN_TTL_MINUTES", "30")),
+            internal_api_key=os.environ.get("INTERNAL_API_KEY", "dev-internal-key"),
         )
 
 

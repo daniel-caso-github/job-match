@@ -22,6 +22,7 @@ def test_metadata_lists_expected_tables():
         "saved_searches",
         "skills",
         "profile_skills",
+        "countries",
     }
 
 
@@ -77,11 +78,18 @@ def test_job_columns_present():
         "requirements",
         "embedding",
         "posted_at",
-        "country",
+        "country_id",
         "remote",
         "fetched_at",
     }
     assert expected.issubset(cols)
+    assert "country" not in cols
+
+
+def test_job_country_fk_references_countries_with_set_null():
+    fks = {fk.parent.name: fk for fk in JobModel.__table__.foreign_keys}
+    assert "country_id" in fks
+    assert fks["country_id"].ondelete == "SET NULL"
 
 
 def test_embedding_dimension_matches_bge_small():

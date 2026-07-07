@@ -29,7 +29,10 @@ export default function MatchCard({ match }: Props) {
           </span>
           <SourceBadge source={match.source} />
         </div>
-        <div className="text-sm text-sub mb-3">{match.company}</div>
+        <div className="text-sm text-sub mb-3">
+          {match.company}
+          {match.country && <span className="ml-1.5 text-muted">· {match.country}</span>}
+        </div>
         <div className="flex items-start gap-[9px] text-sm">
           <span className={`shrink-0 mt-px ${pending ? "text-muted" : "text-pos"}`}>
             <CheckIcon />

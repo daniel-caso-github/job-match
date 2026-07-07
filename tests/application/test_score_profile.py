@@ -84,6 +84,15 @@ class _InMemoryProfileRepo(ProfileRepository):
     def get_by_email(self, email: str) -> Profile | None:
         return None
 
+    def set_reset_token(self, profile_id: str, token: str, expires_at: object) -> None:
+        pass
+
+    def get_by_reset_token(self, token: str) -> Profile | None:
+        return None
+
+    def clear_reset_token(self, profile_id: str) -> None:
+        pass
+
     def list_all(self) -> list[Profile]:
         return []
 
@@ -119,6 +128,9 @@ class _InMemoryJobRepo(JobRepository):
         pass
 
     def list_stack_technologies(self, limit: int = 30) -> list[str]:
+        return []
+
+    def list_countries(self, limit: int = 100) -> list[str]:
         return []
 
     def semantic_top_k(

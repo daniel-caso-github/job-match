@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import delete, select
+from datetime import UTC, datetime
+
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, selectinload
 
@@ -8,6 +10,7 @@ from src.domain.entities.profile import Profile
 from src.domain.ports.profile_repository import ProfileRepository
 from src.domain.value_objects.profile_form import ProfileForm
 from src.infrastructure.persistence import mappers
+from src.infrastructure.persistence.country_resolver import SqlAlchemyCountryResolver
 from src.infrastructure.persistence.orm_models import (
     ProfileModel,
     ProfileSkillModel,
@@ -27,6 +30,7 @@ class SqlAlchemyProfileRepository(ProfileRepository):
         `password_hash` solo se incluye en el set cuando se pasa explícitamente;
         así un re-score no sobreescribe el hash existente.
         """
+        resolver = SqlAlchemyCountryResolver(self._session)
         values: dict = {
             "username": form.username,
             "first_name": form.first_name,
@@ -35,6 +39,7 @@ class SqlAlchemyProfileRepository(ProfileRepository):
             "seniority": form.seniority.value,
             "english_level": form.english_level.value,
             "location": form.location,
+            "country_id": resolver.resolve(form.location),
             "willing_to_relocate": form.willing_to_relocate,
             "modality": form.modality,
             "salary_min": form.salary_min,
@@ -122,3 +127,30 @@ class SqlAlchemyProfileRepository(ProfileRepository):
             )
         ).all()
         return [mappers.profile_model_to_domain(m) for m in models]
+
+    def set_reset_token(self, profile_id: str, token: str, expires_at: datetime) -> None:
+        self._session.execute(
+            update(ProfileModel)
+            .where(ProfileModel.id == profile_id)
+            .values(reset_token=token, reset_token_expires_at=expires_at)
+        )
+
+    def get_by_reset_token(self, token: str) -> Profile | None:
+        model = self._session.scalars(
+            select(ProfileModel)
+            .where(
+                ProfileModel.reset_token == token,
+                ProfileModel.reset_token_expires_at > datetime.now(UTC),
+            )
+            .options(
+                selectinload(ProfileModel.skills).selectinload(ProfileSkillModel.skill)
+            )
+        ).one_or_none()
+        return mappers.profile_model_to_domain(model) if model else None
+
+    def clear_reset_token(self, profile_id: str) -> None:
+        self._session.execute(
+            update(ProfileModel)
+            .where(ProfileModel.id == profile_id)
+            .values(reset_token=None, reset_token_expires_at=None)
+        )

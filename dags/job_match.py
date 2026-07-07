@@ -7,7 +7,9 @@ import requests
 from airflow.decorators import dag, task
 
 PIPELINE_API_URL = os.getenv("PIPELINE_API_URL", "http://api:8000")
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "dev-internal-key")
 TIMEOUT = 1800  # 30 min por tarea
+_HEADERS = {"X-Internal-Api-Key": INTERNAL_API_KEY}
 
 DEFAULT_ARGS = {
     "owner": "danielcaso",
@@ -32,25 +34,25 @@ def job_match():
 
     @task
     def recolectar() -> int:
-        r = requests.post(f"{PIPELINE_API_URL}/jobs/collect", timeout=TIMEOUT)
+        r = requests.post(f"{PIPELINE_API_URL}/jobs/collect", headers=_HEADERS, timeout=TIMEOUT)
         r.raise_for_status()
         return r.json()["collected"]
 
     @task
     def extraer_requisitos(_collected: int) -> int:
-        r = requests.post(f"{PIPELINE_API_URL}/jobs/extract", params={"limit": 200}, timeout=TIMEOUT)
+        r = requests.post(f"{PIPELINE_API_URL}/jobs/extract", headers=_HEADERS, params={"limit": 200}, timeout=TIMEOUT)
         r.raise_for_status()
         return r.json()["extracted"]
 
     @task
     def embeddings(_extracted: int) -> int:
-        r = requests.post(f"{PIPELINE_API_URL}/jobs/embed", params={"limit": 200}, timeout=TIMEOUT)
+        r = requests.post(f"{PIPELINE_API_URL}/jobs/embed", headers=_HEADERS, params={"limit": 200}, timeout=TIMEOUT)
         r.raise_for_status()
         return r.json()["embedded"]
 
     @task
     def score_perfiles(_embedded: int) -> dict:
-        r = requests.post(f"{PIPELINE_API_URL}/jobs/score", timeout=TIMEOUT)
+        r = requests.post(f"{PIPELINE_API_URL}/jobs/score", headers=_HEADERS, timeout=TIMEOUT)
         r.raise_for_status()
         return r.json()["scored"]
 
@@ -59,7 +61,9 @@ def job_match():
         from airflow.operators.python import get_current_context
         run_id = get_current_context()["dag_run"].run_id
         r = requests.post(
-            f"{PIPELINE_API_URL}/jobs/searches/{run_id}/match-count", timeout=TIMEOUT
+            f"{PIPELINE_API_URL}/jobs/searches/{run_id}/match-count",
+            headers=_HEADERS,
+            timeout=TIMEOUT,
         )
         r.raise_for_status()
 

@@ -32,3 +32,4 @@ class MatchFilters(BaseModel):
     latam_only: bool = False
     exclude_eu: bool = False
     with_salary: bool = False
+    countries: list[str] = Field(default_factory=list, max_length=50)

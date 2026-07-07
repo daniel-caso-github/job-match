@@ -8,6 +8,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -18,6 +19,7 @@ from src.domain.entities.match import Match
 from src.domain.entities.profile import Profile
 from src.domain.entities.raw_job import RawJob
 from src.domain.entities.saved_search import SavedSearch
+from src.domain.ports.email_sender import EmailSender
 from src.domain.ports.embedder import Embedder
 from src.domain.ports.job_repository import JobRepository
 from src.domain.ports.llm_scorer import LlmScorer
@@ -33,6 +35,7 @@ from src.interfaces.api.dependencies import (
     TokenData,
     get_airflow_client,
     get_current_profile,
+    get_email_sender,
     get_embedder,
     get_job_repository,
     get_llm_scorer,
@@ -40,6 +43,7 @@ from src.interfaces.api.dependencies import (
     get_profile_repository,
     get_saved_search_repository,
     get_session,
+    verify_internal_api_key,
 )
 from src.interfaces.api.main import app
 
@@ -63,6 +67,8 @@ class FakeJobRepo(JobRepository):
         self.requirements_updates: list[tuple[str, JobRequirements]] = []
         self.technologies: list[str] = []
         self.technologies_calls: list[int] = []
+        self.countries: list[str] = []
+        self.countries_calls: list[int] = []
 
     def upsert(self, job: RawJob) -> None:
         self.upserts.append(job)
@@ -86,6 +92,10 @@ class FakeJobRepo(JobRepository):
         self.technologies_calls.append(limit)
         return self.technologies[:limit]
 
+    def list_countries(self, limit: int = 100) -> list[str]:
+        self.countries_calls.append(limit)
+        return self.countries[:limit]
+
     def semantic_top_k(
         self,
         embedding: list[float],
@@ -97,18 +107,36 @@ class FakeJobRepo(JobRepository):
         return []
 
 
+class FakeEmailSender(EmailSender):
+    def __init__(self):
+        self.sent: list[tuple[str, str]] = []
+
+    def send_password_reset(self, to_email: str, reset_token: str) -> None:
+        self.sent.append((to_email, reset_token))
+
+
 class FakeProfileRepo(ProfileRepository):
     def __init__(self):
         self.profiles: dict[str, Profile] = {}
         self.upserts: list[ProfileForm] = []
         self.embeddings: dict[str, list[float]] = {}
         self._ids_by_username: dict[str, str] = {}
+        self._reset_tokens: dict[str, tuple[str, datetime]] = {}
 
     def upsert(self, form: ProfileForm, password_hash: str | None = None) -> str:
         self.upserts.append(form)
-        profile_id = self._ids_by_username.setdefault(
-            form.username, str(uuid.uuid5(uuid.NAMESPACE_DNS, form.username))
+        # Busca un perfil existente por username (incluye los insertados manualmente)
+        existing_id = next(
+            (pid for pid, p in self.profiles.items() if p.form.username == form.username),
+            None,
         )
+        if existing_id:
+            profile_id = existing_id
+            self._ids_by_username[form.username] = existing_id
+        else:
+            profile_id = self._ids_by_username.setdefault(
+                form.username, str(uuid.uuid5(uuid.NAMESPACE_DNS, form.username))
+            )
         from src.domain.entities.profile import Profile
         self.profiles[profile_id] = Profile(id=profile_id, form=form, password_hash=password_hash)
         return profile_id
@@ -130,6 +158,23 @@ class FakeProfileRepo(ProfileRepository):
             if profile.form.email == email:
                 return profile
         return None
+
+    def set_reset_token(self, profile_id: str, token: str, expires_at: datetime) -> None:
+        self._reset_tokens[token] = (profile_id, expires_at)
+
+    def get_by_reset_token(self, token: str) -> Profile | None:
+        entry = self._reset_tokens.get(token)
+        if entry is None:
+            return None
+        profile_id, expires_at = entry
+        if datetime.now(UTC) > expires_at:
+            return None
+        return self.profiles.get(profile_id)
+
+    def clear_reset_token(self, profile_id: str) -> None:
+        self._reset_tokens = {
+            t: v for t, v in self._reset_tokens.items() if v[0] != profile_id
+        }
 
     def list_all(self) -> list[Profile]:
         return list(self.profiles.values())
@@ -292,6 +337,7 @@ class ApiContext:
     airflow: FakeAirflowClient = field(default_factory=FakeAirflowClient)
     saved_searches: FakeSavedSearchRepo = field(default_factory=FakeSavedSearchRepo)
     session: FakeSession = field(default_factory=FakeSession)
+    email: FakeEmailSender = field(default_factory=FakeEmailSender)
 
 
 @pytest.fixture
@@ -305,6 +351,8 @@ def api() -> Iterator[ApiContext]:
     app.dependency_overrides[get_airflow_client] = lambda: ctx.airflow
     app.dependency_overrides[get_saved_search_repository] = lambda: ctx.saved_searches
     app.dependency_overrides[get_session] = lambda: ctx.session
+    app.dependency_overrides[get_email_sender] = lambda: ctx.email
+    app.dependency_overrides[verify_internal_api_key] = lambda: None
     app.dependency_overrides[get_current_profile] = lambda: TokenData(
         profile_id=FAKE_PROFILE_ID, username=FAKE_USERNAME
     )

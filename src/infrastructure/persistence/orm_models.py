@@ -16,6 +16,16 @@ class Base(DeclarativeBase):
     pass
 
 
+class CountryModel(Base):
+    __tablename__ = "countries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    iso2: Mapped[str | None] = mapped_column(String(2), index=True)
+    iso3: Mapped[str | None] = mapped_column(String(3))
+    continent: Mapped[str | None] = mapped_column(String(50))
+
+
 class JobModel(Base):
     __tablename__ = "jobs"
 
@@ -28,8 +38,11 @@ class JobModel(Base):
     requirements: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))
     posted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
-    country: Mapped[str | None] = mapped_column(String)
+    country_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("countries.id", ondelete="SET NULL")
+    )
     remote: Mapped[bool | None] = mapped_column(Boolean)
+    country_rel: Mapped[CountryModel | None] = relationship()
     fetched_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
@@ -72,12 +85,19 @@ class ProfileModel(Base):
     salary_currency: Mapped[str | None] = mapped_column(String(3))
     summary: Mapped[str | None] = mapped_column(Text)
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))
+    reset_token: Mapped[str | None] = mapped_column(String(64), unique=True)
+    reset_token_expires_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
     )
+
+    country_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("countries.id", ondelete="SET NULL")
+    )
+    country_rel: Mapped[CountryModel | None] = relationship()
 
     skills: Mapped[list[ProfileSkillModel]] = relationship(
         back_populates="profile", cascade="all, delete-orphan"
