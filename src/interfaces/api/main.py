@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.interfaces.api.dependencies import _embedder_singleton
-from src.interfaces.api.routers import auth, health, jobs, matches, profile
+from src.interfaces.api.routers import auth, chat, health, jobs, matches, profile
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,5 +44,6 @@ app.include_router(auth.router)
 app.include_router(matches.router)
 app.include_router(profile.router)
 app.include_router(jobs.router)
+app.include_router(chat.router)
 
 Instrumentator().instrument(app).expose(app)

@@ -23,5 +23,5 @@ def health(session: SessionDep) -> dict:
         "status": overall,
         "db": db_ok,
         "gemini_key_present": gemini_ok,
-        "model": settings.gemini_model,
+        "model": settings.gemini_model_score,
     }

@@ -22,6 +22,7 @@ from src.infrastructure.metrics import (
 
 logger = logging.getLogger(__name__)
 
+PROMPT_VERSION = "v1"
 
 SCORING_PROMPT = """\
 You are a strict hiring-match evaluator. You see (1) the candidate profile,
@@ -81,7 +82,7 @@ class GeminiScorer(LlmScorer):
         model: str | None = None,
         client: genai.Client | None = None,
     ):
-        self._model = model or settings.gemini_model
+        self._model = model or settings.gemini_model_score
         self._client = client
 
     def _ensure_client(self) -> genai.Client:

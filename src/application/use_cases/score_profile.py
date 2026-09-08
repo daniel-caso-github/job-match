@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 
 from src.domain.entities.job import Job
@@ -37,12 +38,14 @@ class ScoreProfileUseCase:
         profile_repository: ProfileRepository,
         job_repository: JobRepository,
         match_repository: MatchRepository,
+        prompt_version: str = "v1",
     ):
         self._embedder = embedder
         self._llm_scorer = llm_scorer
         self._profile_repository = profile_repository
         self._job_repository = job_repository
         self._match_repository = match_repository
+        self._prompt_version = prompt_version
 
     def execute(
         self,
@@ -57,6 +60,9 @@ class ScoreProfileUseCase:
         profile_id = self._profile_repository.upsert(form)
         profile_vec = self._embedder.embed([profile_text_for_embedding(form)])[0]
         self._profile_repository.update_embedding(profile_id, profile_vec)
+        profile_fingerprint = hashlib.sha1(
+            profile_text_for_embedding(form).encode()
+        ).hexdigest()[:16]
 
         top = self._job_repository.semantic_top_k(
             profile_vec, k=k, threshold=t, exclude_scored_for=profile_id
@@ -79,6 +85,8 @@ class ScoreProfileUseCase:
                 semantic_score=semantic_score,
                 llm_score=verdict.score,
                 verdict=verdict.model_dump(mode="json"),
+                profile_fingerprint=profile_fingerprint,
+                prompt_version=self._prompt_version,
             )
             scored += 1
 

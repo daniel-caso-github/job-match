@@ -163,6 +163,8 @@ class MatchModel(Base):
     scored_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+    profile_fingerprint: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     profile: Mapped[ProfileModel] = relationship(back_populates="matches")
     job: Mapped[JobModel] = relationship(back_populates="matches")

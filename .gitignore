@@ -45,3 +45,6 @@ CLAUDE.md
 # Data
 *.sqlite3
 data/
+
+# MCP servers config (paths locales de la máquina)
+.mcp.json

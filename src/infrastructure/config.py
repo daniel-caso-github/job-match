@@ -15,7 +15,9 @@ class Settings:
 
     database_url: str
     gemini_api_key: str | None
-    gemini_model: str
+    gemini_model_extract: str
+    gemini_model_score: str
+    gemini_model_judge: str
     gemini_max_input_chars: int
     embedding_model: str
     semantic_threshold: float
@@ -42,7 +44,9 @@ class Settings:
                 "DATABASE_URL", "postgresql+psycopg://app:app@app-db:5432/jobmatch"
             ),
             gemini_api_key=os.environ.get("GEMINI_API_KEY"),
-            gemini_model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+            gemini_model_extract=os.environ.get("GEMINI_MODEL_EXTRACT", "gemini-2.5-flash"),
+            gemini_model_score=os.environ.get("GEMINI_MODEL_SCORE", "gemini-2.5-flash"),
+            gemini_model_judge=os.environ.get("GEMINI_MODEL_JUDGE", "gemini-2.5-pro"),
             gemini_max_input_chars=int(os.environ.get("GEMINI_MAX_INPUT_CHARS", "12000")),
             embedding_model=os.environ.get("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"),
             semantic_threshold=float(os.environ.get("SEMANTIC_THRESHOLD", "0.65")),

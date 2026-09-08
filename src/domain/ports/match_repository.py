@@ -20,6 +20,8 @@ class MatchRepository(ABC):
         semantic_score: float,
         llm_score: int,
         verdict: dict[str, Any],
+        profile_fingerprint: str | None = None,
+        prompt_version: str | None = None,
     ) -> None: ...
 
     @abstractmethod

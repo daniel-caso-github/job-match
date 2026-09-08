@@ -19,3 +19,5 @@ class Match(BaseModel):
     llm_score: int | None = None
     verdict: dict[str, Any] | None = None
     scored_at: datetime | None = None
+    profile_fingerprint: str | None = None
+    prompt_version: str | None = None
