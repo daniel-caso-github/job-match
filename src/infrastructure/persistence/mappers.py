@@ -99,4 +99,6 @@ def match_model_to_domain(m: MatchModel) -> Match:
         llm_score=m.llm_score,
         verdict=dict(m.verdict) if m.verdict else None,
         scored_at=m.scored_at,
+        profile_fingerprint=m.profile_fingerprint,
+        prompt_version=m.prompt_version,
     )

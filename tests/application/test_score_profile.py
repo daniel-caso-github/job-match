@@ -161,6 +161,8 @@ class _InMemoryMatchRepo(MatchRepository):
         semantic_score: float,
         llm_score: int,
         verdict: dict[str, Any],
+        profile_fingerprint: str | None = None,
+        prompt_version: str | None = None,
     ) -> None:
         self.matches[(profile_id, job_id)] = {
             "semantic_score": semantic_score,

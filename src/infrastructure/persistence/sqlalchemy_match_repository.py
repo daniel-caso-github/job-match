@@ -28,6 +28,8 @@ class SqlAlchemyMatchRepository(MatchRepository):
         semantic_score: float,
         llm_score: int,
         verdict: dict[str, Any],
+        profile_fingerprint: str | None = None,
+        prompt_version: str | None = None,
     ) -> None:
         stmt = pg_insert(MatchModel).values(
             profile_id=profile_id,
@@ -35,6 +37,8 @@ class SqlAlchemyMatchRepository(MatchRepository):
             semantic_score=semantic_score,
             llm_score=llm_score,
             verdict=verdict,
+            profile_fingerprint=profile_fingerprint,
+            prompt_version=prompt_version,
         )
         stmt = stmt.on_conflict_do_update(
             index_elements=["profile_id", "job_id"],
@@ -43,6 +47,8 @@ class SqlAlchemyMatchRepository(MatchRepository):
                 "llm_score": stmt.excluded.llm_score,
                 "verdict": stmt.excluded.verdict,
                 "scored_at": func.now(),
+                "profile_fingerprint": stmt.excluded.profile_fingerprint,
+                "prompt_version": stmt.excluded.prompt_version,
             },
         )
         self._session.execute(stmt)

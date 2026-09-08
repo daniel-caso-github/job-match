@@ -14,6 +14,7 @@ from src.infrastructure.config import settings
 
 logger = logging.getLogger(__name__)
 
+PROMPT_VERSION = "v1"
 
 EXTRACTION_PROMPT = """\
 You are a strict information extractor for job postings.
@@ -52,7 +53,7 @@ class GeminiExtractor(RequirementsExtractor):
         max_input_chars: int | None = None,
         client: genai.Client | None = None,
     ):
-        self._model = model or settings.gemini_model
+        self._model = model or settings.gemini_model_extract
         self._max_input_chars = max_input_chars or settings.gemini_max_input_chars
         self._client = client  # lazy via _ensure_client()
 
