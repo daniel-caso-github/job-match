@@ -1,13 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ApiError, getProfile, updateProfile } from "../lib/api";
+import { ApiError, getProfile, parseCv, updateProfile } from "../lib/api";
 import { profileFormSchema, type ProfileFormValues } from "../lib/schemas";
 import { useProfile } from "../lib/profile-context";
-import type { ProfileForm as ProfileFormPayload } from "../types/api";
+import type { CvExtraction, ProfileForm as ProfileFormPayload } from "../types/api";
 import StackInput from "../components/StackInput";
 import SegmentedControl from "../components/ui/SegmentedControl";
 import ToggleSwitch from "../components/ui/ToggleSwitch";
@@ -79,9 +79,28 @@ function errorMessage(error: unknown): string {
       const detail = (error.body as { detail?: unknown } | null)?.detail;
       return `Datos inválidos: ${JSON.stringify(detail)}`;
     }
+    if (error.status === 415) return "Solo se acepta un archivo PDF.";
+    if (error.status === 413) return "El PDF es demasiado grande.";
     return `Error ${error.status}: ${error.message}`;
   }
   return error instanceof Error ? error.message : "Error desconocido";
+}
+
+function applyCvExtraction(
+  current: ProfileFormValues,
+  extraction: CvExtraction,
+): ProfileFormValues {
+  return {
+    ...current,
+    first_name: extraction.first_name ?? current.first_name,
+    last_name: extraction.last_name ?? current.last_name,
+    email: extraction.email ?? current.email,
+    stack: extraction.stack.length > 0 ? extraction.stack : current.stack,
+    seniority: extraction.seniority ?? current.seniority,
+    english_level: extraction.english_level ?? current.english_level,
+    location: extraction.location ?? current.location,
+    summary: extraction.summary ?? current.summary,
+  };
 }
 
 const INPUT_CLS =
@@ -98,10 +117,24 @@ export default function ProfileForm() {
     handleSubmit,
     watch,
     reset,
+    getValues,
     formState: { errors },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: emptyDefaults(session?.username ?? ""),
+  });
+
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const parseCvMutation = useMutation({
+    mutationFn: (file: File) => parseCv(file),
+    onSuccess: (extraction) => {
+      reset(applyCvExtraction(getValues(), extraction));
+      if (extraction.confidence < 0.3) {
+        toast.warning("No pudimos leer bien el CV — revisá los datos antes de guardar.");
+      } else {
+        toast.success("CV analizado — revisá los datos antes de guardar.");
+      }
+    },
   });
 
   const { data: savedProfile } = useQuery({
@@ -171,6 +204,35 @@ export default function ProfileForm() {
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="mb-7 p-5 bg-panel border border-line rounded-2xl">
+          <h2 className="m-0 mb-1 text-[13px] font-semibold tracking-[0.04em] uppercase text-muted">
+            Cargar CV (opcional)
+          </h2>
+          <p className="m-0 mb-4 text-sm text-sub">
+            Subí tu CV en PDF y prellenamos el formulario — revisá y ajustá antes de guardar.
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              id="cv-file"
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => setCvFile(e.target.files?.[0] ?? null)}
+              className="flex-1 text-sm text-fg-2 file:mr-3 file:h-9 file:px-4 file:rounded-[9px] file:border-0 file:bg-line-2 file:text-fg file:text-sm file:font-medium file:cursor-pointer cursor-pointer"
+            />
+            <button
+              type="button"
+              disabled={!cvFile || parseCvMutation.isPending}
+              onClick={() => cvFile && parseCvMutation.mutate(cvFile)}
+              className="h-9 px-4 bg-line-2 rounded-[9px] text-fg text-sm font-medium disabled:opacity-50 whitespace-nowrap"
+            >
+              {parseCvMutation.isPending ? "Analizando…" : "Analizar CV"}
+            </button>
+          </div>
+          {parseCvMutation.isError && (
+            <p className="mt-3 text-[13px] text-neg">{errorMessage(parseCvMutation.error)}</p>
+          )}
+        </div>
+
         <div className="mb-7 p-5 bg-panel border border-line rounded-2xl">
           <h2 className="m-0 mb-4 text-[13px] font-semibold tracking-[0.04em] uppercase text-muted">
             Cuenta

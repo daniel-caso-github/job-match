@@ -1,5 +1,6 @@
 import type {
   CountriesResponse,
+  CvExtraction,
   HealthResponse,
   JobsScheduleResponse,
   JobsScheduleRunResponse,
@@ -81,6 +82,31 @@ export function updateProfile(
     method: "PUT",
     body: JSON.stringify(form),
   });
+}
+
+export async function parseCv(file: File): Promise<CvExtraction> {
+  const session = getCurrentSession();
+  const authHeader = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+  const formData = new FormData();
+  formData.append("file", file);
+
+  // No fijamos Content-Type: el browser arma el boundary de multipart solo.
+  const res = await fetch("/api/profile/parse-cv", {
+    method: "POST",
+    headers: { ...authHeader },
+    body: formData,
+  });
+  const body = await res.json().catch(() => null);
+
+  if (res.status === 401) {
+    if (session) {
+      clearCurrentSession();
+      window.location.href = "/";
+    }
+    throw new ApiError(res.status, body);
+  }
+  if (!res.ok) throw new ApiError(res.status, body);
+  return body as CvExtraction;
 }
 
 export function getMatches(limit = 20, filters?: SearchFilters): Promise<MatchesListResponse> {

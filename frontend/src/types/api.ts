@@ -24,6 +24,20 @@ export interface ProfileForm {
   summary: string | null;
 }
 
+export interface CvExtraction {
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  stack: TechItem[];
+  seniority: Seniority | null;
+  english_level: EnglishLevel | null;
+  location: string | null;
+  summary: string | null;
+  target_roles: string[];
+  years_of_experience: number | null;
+  confidence: number;
+}
+
 export interface RegisterAccountRequest {
   username: string;
   email: string;

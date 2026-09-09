@@ -48,3 +48,6 @@ data/
 
 # MCP servers config (paths locales de la máquina)
 .mcp.json
+
+# Playwright MCP — screenshots/logs de sesiones de playwright-reviewer
+.playwright-mcp/
