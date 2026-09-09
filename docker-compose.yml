@@ -12,6 +12,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
     AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-change-me}
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
     AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session
     PIPELINE_API_URL: http://api:8000
     INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
@@ -178,6 +179,7 @@ services:
       - |
         airflow db migrate
         airflow users create -u admin -p admin -r Admin -e admin@local -f a -l a || true
+        airflow dags unpause job_match || true
     restart: "no"
 
   airflow-webserver:

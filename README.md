@@ -156,7 +156,10 @@ docker compose up -d airflow-init      # initializes Airflow DB (one-shot)
 docker compose up -d airflow-webserver airflow-scheduler
 ```
 
-Go to <http://127.0.0.1:8080> with `admin/admin`, enable the `job_match` DAG, and trigger it manually the first time.
+The DAG is enabled automatically by `airflow-init` (Airflow pauses new DAGs by default
+otherwise). It will run on its own at the next 12h boundary; go to
+<http://127.0.0.1:8080> with `admin/admin` if you want to trigger it manually to see a run
+immediately.
 
 ---
 
