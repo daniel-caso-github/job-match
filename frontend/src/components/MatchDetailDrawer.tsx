@@ -7,6 +7,7 @@ import ScoreBadge from "./ScoreBadge";
 import SourceBadge from "./SourceBadge";
 import VerdictPanel from "./VerdictPanel";
 import RequirementsPanel from "./RequirementsPanel";
+import PostulationPanel from "./PostulationPanel";
 import RawTextCollapsible from "./RawTextCollapsible";
 import SourceAttribution from "./SourceAttribution";
 import { ExternalLinkIcon, XIcon } from "./ui/icons";
@@ -120,6 +121,7 @@ export default function MatchDetailDrawer({ jobId, onClose }: Props) {
             <div className="flex flex-col gap-4">
               <VerdictPanel verdict={data.verdict} />
               <RequirementsPanel requirements={data.requirements} country={data.country} />
+              {data.llm_score !== null && <PostulationPanel jobId={jobId} />}
               {data.raw_text && <RawTextCollapsible text={data.raw_text} />}
             </div>
 
