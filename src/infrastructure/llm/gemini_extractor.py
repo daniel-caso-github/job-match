@@ -92,6 +92,14 @@ class GeminiExtractor(RequirementsExtractor):
             except (ValidationError, json.JSONDecodeError) as e2:
                 logger.warning("Extraction failed after retry: %s. Returning empty.", e2)
                 return JobRequirements(confidence=0.0)
+            except Exception as e2:
+                logger.warning(
+                    "Extraction failed after retry with unexpected error: %s. Returning empty.", e2
+                )
+                return JobRequirements(confidence=0.0)
+        except Exception as e:
+            logger.warning("Extraction failed with unexpected error: %s. Returning empty.", e)
+            return JobRequirements(confidence=0.0)
 
     @retry(
         stop=stop_after_attempt(3),

@@ -132,6 +132,10 @@ class GeminiScorer(LlmScorer):
                 logger.warning("Scoring failed after retry: %s. Returning neutral.", e2)
                 gemini_requests_total.labels(type="score", status="failed").inc()
                 return Verdict(score=50, strengths=[], risks=["scoring unavailable"])
+        except Exception as e:
+            logger.warning("Scoring failed with unexpected error: %s. Returning neutral.", e)
+            gemini_requests_total.labels(type="score", status="failed").inc()
+            return Verdict(score=50, strengths=[], risks=["scoring unavailable"])
         finally:
             gemini_request_duration.labels(type="score").observe(time.perf_counter() - t0)
 
