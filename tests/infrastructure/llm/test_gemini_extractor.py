@@ -81,6 +81,31 @@ def test_extract_fails_returns_empty():
     assert result.seniority is None
 
 
+def test_extract_api_error_returns_empty():
+    """Un error no relacionado a validación (429, 5xx, red) no debe propagarse —
+    ver el 500 real en /jobs/extract causado por RESOURCE_EXHAUSTED de Gemini."""
+    extractor = GeminiExtractor()
+    with patch.object(extractor, "_generate", side_effect=RuntimeError("429 RESOURCE_EXHAUSTED")):
+        result = extractor.extract("...")
+
+    assert isinstance(result, JobRequirements)
+    assert result.confidence == 0.0
+    assert result.stack == []
+
+
+def test_extract_api_error_on_retry_returns_empty():
+    """El error no-validación también puede aparecer recién en el intento de retry."""
+    bad = _mock_response({"seniority": "expert"})  # dispara el repair prompt
+    extractor = GeminiExtractor()
+    with patch.object(
+        extractor, "_generate", side_effect=[bad, RuntimeError("429 RESOURCE_EXHAUSTED")]
+    ):
+        result = extractor.extract("...")
+
+    assert isinstance(result, JobRequirements)
+    assert result.confidence == 0.0
+
+
 def test_truncates_long_input():
     SENTINEL = "Ω"
     extractor = GeminiExtractor(max_input_chars=12_000)

@@ -102,3 +102,14 @@ def test_score_fails_returns_neutral():
     assert v.score == 50
     assert v.strengths == []
     assert v.risks == ["scoring unavailable"]
+
+
+def test_score_api_error_returns_neutral():
+    """Un error no relacionado a validación (429, 5xx, red) no debe propagarse."""
+    scorer = GeminiScorer()
+    with patch.object(scorer, "_generate", side_effect=RuntimeError("429 RESOURCE_EXHAUSTED")):
+        v = scorer.score(_profile(), _job())
+
+    assert isinstance(v, Verdict)
+    assert v.score == 50
+    assert v.risks == ["scoring unavailable"]
