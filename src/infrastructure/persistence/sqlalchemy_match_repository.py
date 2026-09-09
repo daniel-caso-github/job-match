@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, update
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
@@ -137,3 +137,13 @@ class SqlAlchemyMatchRepository(MatchRepository):
         if filters is not None:
             stmt = self._apply_filters(stmt, filters)
         return self._session.scalar(stmt) or 0
+
+    def set_postulation_package(
+        self, profile_id: str, job_id: str, package: dict[str, Any]
+    ) -> None:
+        stmt = (
+            update(MatchModel)
+            .where(MatchModel.profile_id == profile_id, MatchModel.job_id == job_id)
+            .values(postulation_package=package)
+        )
+        self._session.execute(stmt)

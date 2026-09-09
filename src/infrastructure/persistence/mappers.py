@@ -101,4 +101,5 @@ def match_model_to_domain(m: MatchModel) -> Match:
         scored_at=m.scored_at,
         profile_fingerprint=m.profile_fingerprint,
         prompt_version=m.prompt_version,
+        postulation_package=dict(m.postulation_package) if m.postulation_package else None,
     )

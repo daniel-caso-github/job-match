@@ -185,6 +185,11 @@ class _InMemoryMatchRepo(MatchRepository):
     ) -> int:
         return sum(1 for (pid, _) in self.matches if pid == profile_id)
 
+    def set_postulation_package(
+        self, profile_id: str, job_id: str, package: dict[str, Any]
+    ) -> None:
+        self.matches.setdefault((profile_id, job_id), {})["postulation_package"] = package
+
 
 def _requirements() -> JobRequirements:
     return JobRequirements(stack=["python"], seniority=Seniority.senior)

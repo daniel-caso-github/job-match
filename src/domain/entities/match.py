@@ -21,3 +21,4 @@ class Match(BaseModel):
     scored_at: datetime | None = None
     profile_fingerprint: str | None = None
     prompt_version: str | None = None
+    postulation_package: dict[str, Any] | None = None

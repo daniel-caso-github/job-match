@@ -38,3 +38,8 @@ class MatchRepository(ABC):
     def count_for_profile(
         self, profile_id: str, filters: MatchFilters | None = None
     ) -> int: ...
+
+    @abstractmethod
+    def set_postulation_package(
+        self, profile_id: str, job_id: str, package: dict[str, Any]
+    ) -> None: ...

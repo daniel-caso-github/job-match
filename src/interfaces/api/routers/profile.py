@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field, field_validator
 
 from src.application.use_cases.score_profile import ScoreProfileUseCase
+from src.domain.value_objects.cv_extraction import CvExtraction
 from src.domain.value_objects.job_requirements import EnglishLevel, Seniority
 from src.domain.value_objects.profile_form import _EMAIL_RE, ProfileForm
+from src.infrastructure.config import settings
 from src.infrastructure.llm.gemini_scorer import GeminiScorer
 from src.infrastructure.persistence.database import session_scope
 from src.infrastructure.persistence.sqlalchemy_job_repository import (
@@ -22,6 +24,7 @@ from src.infrastructure.persistence.sqlalchemy_profile_repository import (
 from src.infrastructure.security import hash_password
 from src.interfaces.api.dependencies import (
     CurrentProfileDep,
+    CvExtractorDep,
     ProfileRepositoryDep,
     SessionDep,
     _embedder_singleton,
@@ -107,6 +110,34 @@ def register_profile(
     session.commit()
     bg.add_task(_run_scoring, form)
     return {"profile_id": profile_id, "username": username, "matching": "scheduled"}
+
+
+@router.post("/parse-cv")
+async def parse_cv(
+    extractor: CvExtractorDep,
+    current: CurrentProfileDep,
+    file: UploadFile,
+) -> dict:
+    """Extrae una `CvExtraction` propuesta a partir de un CV en PDF.
+
+    Requiere sesión activa (evita pegar a Gemini sin autenticación). No
+    persiste nada: el resultado es una propuesta para que el usuario la
+    revise/edite en el frontend y confirme el alta/edición vía POST/PUT
+    /profile con el ProfileForm resultante.
+    """
+    if file.content_type != "application/pdf":
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="solo se acepta PDF (application/pdf)",
+        )
+    pdf_bytes = await file.read()
+    if len(pdf_bytes) > settings.cv_max_pdf_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"el PDF supera el máximo de {settings.cv_max_pdf_bytes} bytes",
+        )
+    extraction: CvExtraction = extractor.extract(pdf_bytes)
+    return extraction.model_dump(mode="json")
 
 
 @router.get("/{profile_id}")

@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from operator import add
 from typing import Annotated
 
-from langgraph.graph.message import add
 from typing_extensions import TypedDict
+
+from src.domain.entities.job import Job
+from src.domain.value_objects.profile_form import ProfileForm
+from src.domain.value_objects.skill_gap_report import SkillGapReport
 
 
 class VerdictRef(TypedDict):
@@ -31,3 +35,11 @@ class ChatState(TypedDict):
     profile_id: str
     messages: Annotated[list, add]
     cited_job_ids: Annotated[list[str], add]
+
+
+class PostulationState(TypedDict):
+    profile: ProfileForm
+    job: Job
+    skill_gap: SkillGapReport | None
+    resume_bullets: list[str]
+    cover_letter: str

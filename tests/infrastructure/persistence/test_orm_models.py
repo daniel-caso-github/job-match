@@ -106,6 +106,12 @@ def test_match_has_composite_pk_and_cascade_fks():
     assert fks_by_col["job_id"].ondelete == "CASCADE"
 
 
+def test_match_has_postulation_package_jsonb_column():
+    cols = {c.name for c in MatchModel.__table__.columns}
+    assert "postulation_package" in cols
+    assert MatchModel.__table__.c.postulation_package.nullable
+
+
 def test_hnsw_index_declared_on_jobs_embedding():
     idx = next(
         i for i in JobModel.__table__.indexes if i.name == "jobs_embedding_hnsw"
