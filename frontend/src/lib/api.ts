@@ -8,6 +8,7 @@ import type {
   MatchDetail,
   MatchesListResponse,
   PipelineRunsResponse,
+  PostulationPackage,
   ProfileCreatedResponse,
   ProfileForm,
   RegisterAccountRequest,
@@ -117,6 +118,26 @@ export function getMatches(limit = 20, filters?: SearchFilters): Promise<Matches
 
 export function getMatchDetail(jobId: string): Promise<MatchDetail> {
   return apiFetch<MatchDetail>(`/api/matches/${jobId}`);
+}
+
+export function getPostulation(jobId: string): Promise<PostulationPackage> {
+  return apiFetch<PostulationPackage>(`/api/matches/${jobId}/postulation`);
+}
+
+export function generatePostulation(jobId: string): Promise<PostulationPackage> {
+  return apiFetch<PostulationPackage>(`/api/matches/${jobId}/postulation`, { method: "POST" });
+}
+
+export function approvePostulation(jobId: string): Promise<PostulationPackage> {
+  return apiFetch<PostulationPackage>(`/api/matches/${jobId}/postulation/approve`, {
+    method: "POST",
+  });
+}
+
+export function rejectPostulation(jobId: string): Promise<PostulationPackage> {
+  return apiFetch<PostulationPackage>(`/api/matches/${jobId}/postulation/reject`, {
+    method: "POST",
+  });
 }
 
 export function getJobsSchedule(): Promise<JobsScheduleResponse> {

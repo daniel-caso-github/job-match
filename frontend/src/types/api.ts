@@ -75,6 +75,22 @@ export interface MatchListItem {
   verdict: Verdict | null;
 }
 
+export type PostulationStatus = "pendiente_aprobacion" | "aprobado" | "rechazado";
+
+export interface SkillGapReport {
+  met_requirements: string[];
+  gaps: string[];
+  notes: string | null;
+  confidence: number;
+}
+
+export interface PostulationPackage {
+  skill_gap: SkillGapReport;
+  resume_bullets: string[];
+  cover_letter: string;
+  status: PostulationStatus;
+}
+
 export interface MatchDetail extends MatchListItem {
   requirements: JobRequirements | null;
   raw_text: string | null;
