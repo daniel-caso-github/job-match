@@ -18,7 +18,9 @@ class Settings:
     gemini_model_extract: str
     gemini_model_score: str
     gemini_model_judge: str
+    gemini_model_cv: str
     gemini_max_input_chars: int
+    cv_max_pdf_bytes: int
     embedding_model: str
     semantic_threshold: float
     top_k_for_llm: int
@@ -47,7 +49,9 @@ class Settings:
             gemini_model_extract=os.environ.get("GEMINI_MODEL_EXTRACT", "gemini-2.5-flash"),
             gemini_model_score=os.environ.get("GEMINI_MODEL_SCORE", "gemini-2.5-flash"),
             gemini_model_judge=os.environ.get("GEMINI_MODEL_JUDGE", "gemini-2.5-pro"),
+            gemini_model_cv=os.environ.get("GEMINI_MODEL_CV", "gemini-2.5-flash"),
             gemini_max_input_chars=int(os.environ.get("GEMINI_MAX_INPUT_CHARS", "12000")),
+            cv_max_pdf_bytes=int(os.environ.get("CV_MAX_PDF_BYTES", str(8 * 1024 * 1024))),
             embedding_model=os.environ.get("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"),
             semantic_threshold=float(os.environ.get("SEMANTIC_THRESHOLD", "0.65")),
             top_k_for_llm=int(os.environ.get("TOP_K_FOR_LLM", "30")),

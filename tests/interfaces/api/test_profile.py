@@ -157,3 +157,41 @@ def test_get_profile_returns_403_for_other_profile(client: TestClient, api: ApiC
 def test_get_profile_returns_404_when_missing(client: TestClient, api: ApiContext):
     r = client.get(f"/profile/{FAKE_PROFILE_ID}")
     assert r.status_code == 404
+
+
+def test_parse_cv_returns_extraction(client: TestClient, api: ApiContext):
+    r = client.post(
+        "/profile/parse-cv",
+        files={"file": ("cv.pdf", b"%PDF-1.4 fake pdf bytes", "application/pdf")},
+    )
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["first_name"] == "Daniel"
+    assert body["stack"] == [{"name": "python", "years": 5}]
+    assert body["seniority"] == "senior"
+    assert body["confidence"] == 0.8
+    assert api.cv_extractor.calls == [b"%PDF-1.4 fake pdf bytes"]
+
+
+def test_parse_cv_rejects_non_pdf(client: TestClient, api: ApiContext):
+    r = client.post(
+        "/profile/parse-cv",
+        files={"file": ("cv.docx", b"not a pdf", "application/msword")},
+    )
+
+    assert r.status_code == 415
+    assert api.cv_extractor.calls == []
+
+
+def test_parse_cv_rejects_oversized_file(client: TestClient, api: ApiContext):
+    from src.infrastructure.config import settings
+
+    oversized = b"0" * (settings.cv_max_pdf_bytes + 1)
+    r = client.post(
+        "/profile/parse-cv",
+        files={"file": ("cv.pdf", oversized, "application/pdf")},
+    )
+
+    assert r.status_code == 413
+    assert api.cv_extractor.calls == []

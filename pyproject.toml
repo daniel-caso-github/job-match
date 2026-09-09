@@ -28,6 +28,7 @@ dependencies = [
     "resend>=2.0",
     "langgraph>=0.3",
     "langchain-core>=0.3",
+    "python-multipart>=0.0.9",
 ]
 
 [dependency-groups]

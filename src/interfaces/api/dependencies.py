@@ -15,21 +15,27 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from src.domain.ports.cv_extractor import CvExtractor
 from src.domain.ports.email_sender import EmailSender
 from src.domain.ports.embedder import Embedder
 from src.domain.ports.job_repository import JobRepository
 from src.domain.ports.llm_scorer import LlmScorer
 from src.domain.ports.match_repository import MatchRepository
+from src.domain.ports.pitch_tailorer import PitchTailorer
 from src.domain.ports.profile_repository import ProfileRepository
 from src.domain.ports.requirements_extractor import RequirementsExtractor
 from src.domain.ports.saved_search_repository import SavedSearchRepository
+from src.domain.ports.skill_gap_analyzer import SkillGapAnalyzer
 from src.infrastructure.config import settings
 from src.infrastructure.email.resend_email_sender import ResendEmailSender
 from src.infrastructure.embedding.sentence_transformers_embedder import (
     SentenceTransformersEmbedder,
 )
+from src.infrastructure.llm.gemini_cv_extractor import GeminiCvExtractor
 from src.infrastructure.llm.gemini_extractor import GeminiExtractor
+from src.infrastructure.llm.gemini_pitch_tailorer import GeminiPitchTailorer
 from src.infrastructure.llm.gemini_scorer import GeminiScorer
+from src.infrastructure.llm.gemini_skill_gap_analyzer import GeminiSkillGapAnalyzer
 from src.infrastructure.orchestration.airflow_client import AirflowClient
 from src.infrastructure.persistence.database import SessionLocal
 from src.infrastructure.persistence.sqlalchemy_job_repository import (
@@ -78,6 +84,10 @@ def get_requirements_extractor() -> RequirementsExtractor:
     return GeminiExtractor()
 
 
+def get_cv_extractor() -> CvExtractor:
+    return GeminiCvExtractor()
+
+
 @lru_cache(maxsize=1)
 def _embedder_singleton() -> SentenceTransformersEmbedder:
     # Cargar el modelo en memoria es caro (~133 MB); lo compartimos entre requests.
@@ -90,6 +100,14 @@ def get_embedder() -> Embedder:
 
 def get_llm_scorer() -> LlmScorer:
     return GeminiScorer()
+
+
+def get_skill_gap_analyzer() -> SkillGapAnalyzer:
+    return GeminiSkillGapAnalyzer()
+
+
+def get_pitch_tailorer() -> PitchTailorer:
+    return GeminiPitchTailorer()
 
 
 def get_airflow_client() -> AirflowClient:
@@ -143,8 +161,11 @@ MatchRepositoryDep = Annotated[MatchRepository, Depends(get_match_repository)]
 RequirementsExtractorDep = Annotated[
     RequirementsExtractor, Depends(get_requirements_extractor)
 ]
+CvExtractorDep = Annotated[CvExtractor, Depends(get_cv_extractor)]
 EmbedderDep = Annotated[Embedder, Depends(get_embedder)]
 LlmScorerDep = Annotated[LlmScorer, Depends(get_llm_scorer)]
+SkillGapAnalyzerDep = Annotated[SkillGapAnalyzer, Depends(get_skill_gap_analyzer)]
+PitchTailorerDep = Annotated[PitchTailorer, Depends(get_pitch_tailorer)]
 AirflowClientDep = Annotated[AirflowClient, Depends(get_airflow_client)]
 EmailSenderDep = Annotated[EmailSender, Depends(get_email_sender)]
 SavedSearchRepositoryDep = Annotated[

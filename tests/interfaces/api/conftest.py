@@ -19,30 +19,38 @@ from src.domain.entities.match import Match
 from src.domain.entities.profile import Profile
 from src.domain.entities.raw_job import RawJob
 from src.domain.entities.saved_search import SavedSearch
+from src.domain.ports.cv_extractor import CvExtractor
 from src.domain.ports.email_sender import EmailSender
 from src.domain.ports.embedder import Embedder
 from src.domain.ports.job_repository import JobRepository
 from src.domain.ports.llm_scorer import LlmScorer
 from src.domain.ports.match_repository import MatchRepository
+from src.domain.ports.pitch_tailorer import PitchTailorer
 from src.domain.ports.profile_repository import ProfileRepository
 from src.domain.ports.saved_search_repository import SavedSearchRepository
+from src.domain.ports.skill_gap_analyzer import SkillGapAnalyzer
+from src.domain.value_objects.cv_extraction import CvExtraction
 from src.domain.value_objects.job_requirements import JobRequirements
 from src.domain.value_objects.match_filters import MatchFilters
 from src.domain.value_objects.profile_form import ProfileForm
+from src.domain.value_objects.skill_gap_report import SkillGapReport
 from src.domain.value_objects.verdict import Verdict
 from src.infrastructure.security import create_access_token
 from src.interfaces.api.dependencies import (
     TokenData,
     get_airflow_client,
     get_current_profile,
+    get_cv_extractor,
     get_email_sender,
     get_embedder,
     get_job_repository,
     get_llm_scorer,
     get_match_repository,
+    get_pitch_tailorer,
     get_profile_repository,
     get_saved_search_repository,
     get_session,
+    get_skill_gap_analyzer,
     verify_internal_api_key,
 )
 from src.interfaces.api.main import app
@@ -187,6 +195,7 @@ class FakeMatchRepo(MatchRepository):
         self.upserts: list[dict] = []
         self.top_calls: list[tuple[str, int, MatchFilters | None]] = []
         self.pair_calls: list[tuple[str, str]] = []
+        self.postulation_updates: list[tuple[str, str, dict[str, Any]]] = []
 
     def upsert(
         self,
@@ -223,6 +232,17 @@ class FakeMatchRepo(MatchRepository):
         self, profile_id: str, filters: MatchFilters | None = None
     ) -> int:
         return sum(1 for u in self.upserts if u["profile_id"] == profile_id)
+
+    def set_postulation_package(
+        self, profile_id: str, job_id: str, package: dict[str, Any]
+    ) -> None:
+        self.postulation_updates.append((profile_id, job_id, package))
+        if self.pair_response is not None and self.pair_response[0].job_id == job_id:
+            match, job = self.pair_response
+            self.pair_response = (
+                match.model_copy(update={"postulation_package": package}),
+                job,
+            )
 
 
 class FakeSavedSearchRepo(SavedSearchRepository):
@@ -324,6 +344,45 @@ class FakeScorer(LlmScorer):
         return Verdict(score=80, strengths=["stub"], risks=[])
 
 
+class FakeCvExtractor(CvExtractor):
+    def __init__(self):
+        self.calls: list[bytes] = []
+        self.response = CvExtraction(
+            first_name="Daniel",
+            stack=[{"name": "python", "years": 5}],
+            seniority="senior",
+            confidence=0.8,
+        )
+
+    def extract(self, pdf_bytes: bytes) -> CvExtraction:
+        self.calls.append(pdf_bytes)
+        return self.response
+
+
+class FakeSkillGapAnalyzer(SkillGapAnalyzer):
+    def __init__(self):
+        self.calls: list[tuple[ProfileForm, Any]] = []
+        self.response = SkillGapReport(
+            met_requirements=["python"], gaps=["kubernetes"], notes="stub", confidence=0.8
+        )
+
+    def analyze(self, profile: ProfileForm, job) -> SkillGapReport:
+        self.calls.append((profile, job))
+        return self.response
+
+
+class FakePitchTailorer(PitchTailorer):
+    def __init__(self):
+        self.calls: list[tuple[ProfileForm, Any, SkillGapReport]] = []
+        self.response: tuple[list[str], str] = (["stub bullet"], "stub cover letter")
+
+    def tailor(
+        self, profile: ProfileForm, job, skill_gap: SkillGapReport
+    ) -> tuple[list[str], str]:
+        self.calls.append((profile, job, skill_gap))
+        return self.response
+
+
 # --------------------------- fixtures ---------------------------
 
 
@@ -338,6 +397,9 @@ class ApiContext:
     saved_searches: FakeSavedSearchRepo = field(default_factory=FakeSavedSearchRepo)
     session: FakeSession = field(default_factory=FakeSession)
     email: FakeEmailSender = field(default_factory=FakeEmailSender)
+    cv_extractor: FakeCvExtractor = field(default_factory=FakeCvExtractor)
+    skill_gap_analyzer: FakeSkillGapAnalyzer = field(default_factory=FakeSkillGapAnalyzer)
+    pitch_tailorer: FakePitchTailorer = field(default_factory=FakePitchTailorer)
 
 
 @pytest.fixture
@@ -352,6 +414,9 @@ def api() -> Iterator[ApiContext]:
     app.dependency_overrides[get_saved_search_repository] = lambda: ctx.saved_searches
     app.dependency_overrides[get_session] = lambda: ctx.session
     app.dependency_overrides[get_email_sender] = lambda: ctx.email
+    app.dependency_overrides[get_cv_extractor] = lambda: ctx.cv_extractor
+    app.dependency_overrides[get_skill_gap_analyzer] = lambda: ctx.skill_gap_analyzer
+    app.dependency_overrides[get_pitch_tailorer] = lambda: ctx.pitch_tailorer
     app.dependency_overrides[verify_internal_api_key] = lambda: None
     app.dependency_overrides[get_current_profile] = lambda: TokenData(
         profile_id=FAKE_PROFILE_ID, username=FAKE_USERNAME

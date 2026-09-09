@@ -165,6 +165,7 @@ class MatchModel(Base):
     )
     profile_fingerprint: Mapped[str | None] = mapped_column(String(40), nullable=True)
     prompt_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    postulation_package: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     profile: Mapped[ProfileModel] = relationship(back_populates="matches")
     job: Mapped[JobModel] = relationship(back_populates="matches")
